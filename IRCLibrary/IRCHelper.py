@@ -36,6 +36,7 @@ def join(server,cChannel,listTreeStore):
     nChannel = IRC.channel()
     nChannel.cName = cChannel
     nChannel.cTextBuffer = gtk.TextBuffer()
+    
 
     #...add it to the servers channels list.
     server.channels.append(nChannel)

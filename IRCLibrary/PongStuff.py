@@ -83,7 +83,6 @@ def userStuff(server,i):#The user list.
         m = ResponseParser.parseServer(i)
         for channel in server.channels:
             if channel.cName == m[0].channel:
-                #channel.cUsers = ResponseParser.parseUsers(USERS,server,channel)#Add the users to this channels users...
                 #Add the users correctly.
                 for user in ResponseParser.parseUsers(USERS,server,channel):
                     usr = IRC.user()
@@ -95,14 +94,14 @@ def userStuff(server,i):#The user list.
                     #Get the nickname.
                     usr.cNick = user.replace(usr.cMode,"").replace(" ","")
                     channel.cUsers.append(usr)
+                    print usr.cNick
+                
 
-
-                # * = Founder   
-                # ! = Admin / Protected    
-                # @ = Op          
-                # % = HalfOp      
-                # + = Voice   
-
+                # * = Founder
+                # ! = Admin / Protected
+                # @ = Op
+                # % = HalfOp
+                # + = Voice
                 
                 #Sort the users.
                 owners = []
@@ -139,7 +138,6 @@ def userStuff(server,i):#The user list.
                 register_iconsets([("founder", sys.path[0] + "/images/Founder.png"),("admin", sys.path[0] + "/images/Admin.png"),
                 ("op", sys.path[0] + "/images/op.png"),("hop", sys.path[0] + "/images/hop.png"),("voice", sys.path[0] + "/images/voice.png")])
 
-
                 print others,hops,ops,admins,owners
                 #Add the Owners, to the list of users.
                 for user in owners:
@@ -148,31 +146,31 @@ def userStuff(server,i):#The user list.
                             usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("founder")])
                 #Add the admins, to the list of users
                 for user in admins:
-                    if itrContainsString(user,channel.cTreeIter,server.listTreeStore) == False:
+                    if itrContainsString(user,server.listTreeStore.iter_children(channel.cTreeIter),server.listTreeStore) == False:
                         for usr in channel.cUsers:
                             if usr.cNick == user:
                                 usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("admin")])                
                 #Add the operators, to the list of users
                 for user in ops:
-                    if itrContainsString(user,channel.cTreeIter,server.listTreeStore) == False:
+                    if itrContainsString(user,server.listTreeStore.iter_children(channel.cTreeIter),server.listTreeStore) == False:
                         for usr in channel.cUsers:
                             if usr.cNick == user:
                                 usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("op")])  
                 #Add the half operators, to the list of users
                 for user in hops:
-                    if itrContainsString(user,channel.cTreeIter,server.listTreeStore) == False:
+                    if itrContainsString(user,server.listTreeStore.iter_children(channel.cTreeIter),server.listTreeStore) == False:
                         for usr in channel.cUsers:
                             if usr.cNick == user:
                                 usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("hop")])  
                 #Add the voices, to the list of users
                 for user in vs:
-                    if itrContainsString(user,channel.cTreeIter,server.listTreeStore) == False:
+                    if itrContainsString(user,server.listTreeStore.iter_children(channel.cTreeIter),server.listTreeStore) == False:
                         for usr in channel.cUsers:
                             if usr.cNick == user:
                                 usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("voice")])  
                 #Add the rest, to the list of users
                 for user in others:
-                    if itrContainsString(user,channel.cTreeIter,server.listTreeStore) == False:
+                    if itrContainsString(user,server.listTreeStore.iter_children(channel.cTreeIter),server.listTreeStore) == False:
                         for usr in channel.cUsers:
                             if usr.cNick == user:
                                 usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,None])  
@@ -186,13 +184,14 @@ def itrContainsString(string,itr,treestore):
     
     try:
         while itr:
+            print treestore.get_value(itr, 0), string
             if treestore.get_value(itr, 0) == string:
                 return True
             itr = treestore.iter_next(itr)
 
         return False
     except:
-        return False
+        return True
         traceback.print_exc()
 
 def register_iconsets(icon_info):

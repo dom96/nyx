@@ -7,13 +7,11 @@ from time import localtime, strftime
 import traceback
 import pango
 import time
-#IRCLibrary, Import
 import sys
-sys.path.append(sys.path[0] + "/IRCLibrary")
+#For errors
 #sys.stderr = open("Errors.txt", "w")
-
-import IRC
-import IRCHelper
+#IRCLibrary, Import
+from IRCLibrary import IRC,IRCHelper
 #Queue
 import Queue
 #!--End of Import--!#
@@ -98,6 +96,7 @@ class MainForm:
         IRC.connectEvent("onNickChange",self.onNickChange,self.nServer)
         IRC.connectEvent("onUsersChange",self.onUsersChange,self.nServer)
 
+        #Start a new a connection to a server(Multi threaded)
         gtk.gdk.threads_enter()
         thread.start_new(IRC.connect,(serverAddr,nickname,"NyxIRC",port,self.nServer))
         gtk.gdk.threads_leave()
@@ -624,6 +623,15 @@ class MainForm:
 
             IRCHelper.sendMsg(server,splitText[0],msg)
             return True
+        if "/raw" in text:
+            splitText = text.replace("/raw ","").split(" ")
+            rawMsg = ""
+            for i in splitText:
+                rawMsg += i + " "
+                
+            server.cSocket.send(rawMsg + "\r\n")
+            return True
+
 
 
         return False
