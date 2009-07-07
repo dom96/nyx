@@ -1,0 +1,10 @@
+!---vIRC Library Events--!
+onServerMsg - Welcome messages etc. - pResp(A tuple of serverMsg(class)), cServer(The server)
+onMotdMsg - After connection to the server is made, the server sends a MOTD that server is activated then. - pResp(The motd message, a tuple of ServerMsg()), cServer(The server)
+onPrivMsg - When a user on the channel sends a message(Or a private message to you). - pResp(The parsed PrivMsg), cServer(The server)
+onJoinMsg - When a user joins a channel, the pResp.msg is the channel. - pResp(The parsed msg), cServer(The server)
+onQuitMsg - When a user quits a channel. - pResp(The parsed msg), cServer(The server)
+onPartMsg - When a user leaves a channel. - pResp(The parsed msg), cServer(The server)
+onNoticeMsg - When a NOTICE is received. - pResp(The parsed msg), cServer(the server)
+onKickMsg - When a KICK is received(A person is kicked from a channel). - pResp(The parsed msg), cServer(The server).
+onNickChange - When a user changes it's NICK - pResp,cServer
