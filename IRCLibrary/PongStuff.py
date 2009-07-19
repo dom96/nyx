@@ -43,10 +43,15 @@ def nickResp(server,i):
         m = ResponseParser.parseMsg(i)
         if m is not False:
             if m.typeMsg == "NICK":
+                if m.nick == server.cNick:
+                    server.cNick = m.msg
+
                 print "NICK----"
                 for event in IRC.eventFunctions:
                     if event.eventName == "onNickChange" and event.cServer == server:
                         gobject.idle_add(event.aFunc,m,server)
+
+
 
 def kickResp(server,i):
     if "KICK" in i:

@@ -155,6 +155,7 @@ def parseMsg(data):
         #print splitMsg
         m = privMsg()
         m.nick = string.strip(string.split(splitMsg[0],"!")[0],":")
+        print m.nick
         m.host = string.strip(string.split(splitMsg[0],"!")[1],":")
         m.typeMsg = string.strip(splitMsg[1],":")
         try:

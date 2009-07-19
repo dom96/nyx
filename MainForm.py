@@ -250,8 +250,12 @@ class MainForm:
             timeTag = cChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey 
             global nickname
             cChannel.cTextBuffer.insert_with_tags(cChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
-            cChannel.cTextBuffer.insert_with_tags(cChannel.cTextBuffer.get_end_iter()," " + nickname + ": ",nickTag)
+            cChannel.cTextBuffer.insert_with_tags(cChannel.cTextBuffer.get_end_iter()," " + servers[0].cNick + ": ",nickTag)
             cChannel.cTextBuffer.insert(cChannel.cTextBuffer.get_end_iter(),wText + "\n")
+
+            #Scroll the TextView to the bottom...                                   
+            endMark = cChannel.cTextBuffer.create_mark(None, cChannel.cTextBuffer.get_end_iter(), True)
+            chatTextView.scroll_to_mark(endMark,0)   
 
         widget.set_text("")
 
@@ -400,7 +404,7 @@ class MainForm:
                 endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
                 chatTextView.scroll_to_mark(endMark,0)
         except:
-            #Freenode does this, it doesn't give you the channel the person QUIT on, 
+            #I guess every server does this , it doesn't give you the channel the person QUIT on, 
             #so i have to check if the person who QUIT is in any of the channels that i'm on, and notify the user on the correct channel.
             for ch in cServer.channels:
                 for user in ch.cUsers:
@@ -448,7 +452,8 @@ class MainForm:
         if newlySelected == rChannel.cName:
             #Scroll the TextView to the bottom...                                   
             endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
-            chatTextView.scroll_to_mark(endMark,0)  
+            chatTextView.scroll_to_mark(endMark,0)
+
     def onNoticeMsg(self,cResp,cServer):
         global highlightTagColor
         global nickTagColor
@@ -568,7 +573,7 @@ class MainForm:
                     cServer.listTreeStore.set_value(user.cTreeIter,0,cResp.msg)    
                     user.cNick = cResp.msg
         except:
-            #Freenode does this, it doesn't give you the channel the person QUIT on, 
+            #Every server does this, it doesn't give you the channel the person QUIT on, 
             #so i have to check if the person who QUIT is in any of the channels that i'm on, and notify the user on the correct channel.
             for ch in cServer.channels:
                 for user in ch.cUsers:
@@ -591,7 +596,7 @@ class MainForm:
                             endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
                             chatTextView.scroll_to_mark(endMark,0)
 
-                        #Search for the user and change his name.(in the treeview            
+                        #Search for the user and change his name.(in the treeview)
                         for user in rChannel.cUsers:
                             if user.cNick == cResp.nick:
                                 print "Setting-" + cResp.msg
