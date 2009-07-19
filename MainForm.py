@@ -608,13 +608,13 @@ class MainForm:
 
     #EntryBox Activated, Checks for any commands, like /j or /join.
     def entryBoxCheck(self,text,server):
-        if "/j" in text or "/join" in text:
+        if text.startswith("/j") or text.startswith("/join"):
             IRCHelper.join(server,text.replace("/j ","").replace("/join ",""),listTreeStore)
             return True
-        if "/msg" in text:
+        if text.startswith("/msg"):
             splitText = text.replace("/msg ","").split(" ")
             count = 0     
-            msg = ""       
+            msg = ""
             for i in splitText:
                 if count > 0:
                     msg += i + " "
@@ -622,7 +622,7 @@ class MainForm:
 
             IRCHelper.sendMsg(server,splitText[0],msg)
             return True
-        if "/raw" in text:
+        if text.startswith("/raw"):
             splitText = text.replace("/raw ","").split(" ")
             rawMsg = ""
             for i in splitText:

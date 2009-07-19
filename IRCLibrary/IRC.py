@@ -57,15 +57,6 @@ def connect(address, nick, realname,port,server):
         if event.eventName == "onServerMsg" and event.cServer == server:
             event.aFunc(datParsed,server)
 
-    #Send the "USER" command, to the server, this is the second command to be sent to the server.
-    server.cSocket.send("USER " + nick + " vIRC Client " + realname + " \r\n") # USER >nick< vIRC Client >realname< CR-LF
-    data = server.cSocket.recv(1024) #Receive the response
-    print data
-    datParsed = ResponseParser.parse(data,True,False)
-    for event in eventFunctions:
-        if event.eventName == "onServerMsg" and event.cServer == server:
-            event.aFunc(datParsed,server)
-
     #Send the "NICK" command, to the server, this is the third command to be sent to the server.And last step to connect.
     server.cSocket.send('NICK ' + nick + ' \r\n') # NICK >nick< CR-LF
     data = server.cSocket.recv(1024) #Receive the response
@@ -74,6 +65,17 @@ def connect(address, nick, realname,port,server):
     for event in eventFunctions:
         if event.eventName == "onServerMsg" and event.cServer == server:
             event.aFunc(datParsed,server)
+
+    #Send the "USER" command, to the server, this is the second command to be sent to the server.
+    server.cSocket.send("USER " + nick + " " + address + " Nyx " + realname + " \r\n") # USER >nick< vIRC Client >realname< CR-LF 
+    data = server.cSocket.recv(1024) #Receive the response
+    print data
+    datParsed = ResponseParser.parse(data,True,False)
+    for event in eventFunctions:
+        if event.eventName == "onServerMsg" and event.cServer == server:
+            event.aFunc(datParsed,server)
+
+
 
     #Add all the info of the server.
     server.cAddress = address
