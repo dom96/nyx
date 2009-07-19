@@ -146,39 +146,27 @@ def userStuff(server,i):#The user list.
                 print others,hops,ops,admins,owners
                 #Add the Owners, to the list of users.
                 for user in owners:
-                    for usr in channel.cUsers:
-                        if usr.cNick == user:
-                            usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("founder")])
+                    usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("founder")])
                 #Add the admins, to the list of users
                 for user in admins:
                     if itrContainsString(user,server.listTreeStore.iter_children(channel.cTreeIter),server.listTreeStore) == False:
-                        for usr in channel.cUsers:
-                            if usr.cNick == user:
-                                usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("admin")])                
+                        usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("admin")])
                 #Add the operators, to the list of users
                 for user in ops:
                     if itrContainsString(user,server.listTreeStore.iter_children(channel.cTreeIter),server.listTreeStore) == False:
-                        for usr in channel.cUsers:
-                            if usr.cNick == user:
-                                usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("op")])  
+                        usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("op")])
                 #Add the half operators, to the list of users
                 for user in hops:
                     if itrContainsString(user,server.listTreeStore.iter_children(channel.cTreeIter),server.listTreeStore) == False:
-                        for usr in channel.cUsers:
-                            if usr.cNick == user:
-                                usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("hop")])  
+                        usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("hop")])  
                 #Add the voices, to the list of users
                 for user in vs:
                     if itrContainsString(user,server.listTreeStore.iter_children(channel.cTreeIter),server.listTreeStore) == False:
-                        for usr in channel.cUsers:
-                            if usr.cNick == user:
-                                usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("voice")])  
+                        usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("voice")])
                 #Add the rest, to the list of users
                 for user in others:
                     if itrContainsString(user,server.listTreeStore.iter_children(channel.cTreeIter),server.listTreeStore) == False:
-                        for usr in channel.cUsers:
-                            if usr.cNick == user:
-                                usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,None])  
+                        usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,None])
 
                 for event in IRC.eventFunctions:
                     if event.eventName == "onUsersChange" and event.cServer == server:
@@ -191,6 +179,7 @@ def itrContainsString(string,itr,treestore):
         while itr:
             print treestore.get_value(itr, 0), string
             if treestore.get_value(itr, 0) == string:
+                print "True"
                 return True
             itr = treestore.iter_next(itr)
 

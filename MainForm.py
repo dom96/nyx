@@ -459,21 +459,19 @@ class MainForm:
         global nickTagColor
         global timeTagColor
 
-        print cResp.channel,cServer.cNick
-        if cResp.channel != cServer.cNick: 
+        try:#If a channel isn't selected...
+            #Get the selected iter
+            model, selected = listTreeView.get_selection().get_selected()
+            newlySelected = listTreeStore.get_value(selected, 0)
             #Get the textbuffer for the right channel.
             for ch in cServer.channels:
-                if ch.cName.lower() == cResp.channel.lower():
+                if ch.cName.lower() == newlySelected.lower():
                     rChannel = ch
 
-
-
-            print "....."
             nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
             timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey    
             highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=highlightTagColor)#Green
-    
-    
+
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >",highlightTag)
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick,nickTag)
@@ -488,11 +486,7 @@ class MainForm:
                 endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
                 chatTextView.scroll_to_mark(endMark,0)
 
-        else:
-            print "!!!!"
-            #nickTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
-            #timeTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey    
-            #highlightTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=highlightTagColor)#Green
+        except:
             cServer.cTextBuffer.insert_with_tags_by_name(cServer.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),"timeTag")
             cServer.cTextBuffer.insert_with_tags_by_name(cServer.cTextBuffer.get_end_iter()," >","highlightTag")
             cServer.cTextBuffer.insert_with_tags_by_name(cServer.cTextBuffer.get_end_iter(),cResp.nick,"nickTag")  
@@ -557,7 +551,7 @@ class MainForm:
 
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," <>" + " ",nickTag)
-            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick + " changed his nick to " + cResp.msg + "\n",partTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick + " is now known as " + cResp.msg + "\n",partTag)
 
             #Get the selected iter
             model, selected = listTreeView.get_selection().get_selected()
@@ -586,7 +580,7 @@ class MainForm:
 
                         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
                         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," <>" + " ",nickTag)
-                        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick + " changed his nick to " + cResp.msg + "\n",partTag)
+                        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick + " is now known as " + cResp.msg + "\n",partTag)
 
                         #Get the selected iter
                         model, selected = listTreeView.get_selection().get_selected()
