@@ -12,8 +12,6 @@ import sys
 #sys.stderr = open("Errors.txt", "w")
 #IRCLibrary, Import
 from IRCLibrary import IRC,IRCHelper
-#Queue
-import Queue
 #!--End of Import--!#
 
 gobject.threads_init() 
@@ -24,10 +22,10 @@ listTreeStore = gtk.TreeStore(str,str)#For the list of servers,channels,users
 listTreeView = gtk.TreeView
 
 #Info
-serverAddr = "irc.spotchat.org"
+serverAddr = "ikey.dynalias.com"
 channelName = "#freenode"
 port = 6667
-nickname = "Nyx"
+nickname = "Nyx1"
 
 servers = [] #List of Servers, server()
 
@@ -277,6 +275,10 @@ class MainForm:
                     print "NewTextBuffer Channel = " + i.cAddress
 
     #||IRC Events||#
+    """
+    onMotdMsg
+    When a MOTD Message is received.
+    """
     def onMotdMsg(self,cResp,cServer):#When a MOTD message is received and parsed.
         global chatTextView
 
@@ -292,7 +294,10 @@ class MainForm:
         endMark = chatTextView.get_buffer().create_mark(None, chatTextView.get_buffer().get_end_iter(), True)
         chatTextView.scroll_to_mark(endMark,0)
 
-        print servers[0].cRealname
+    """
+    onServerMsg
+    When a server message is received.
+    """
     def onServerMsg(self,cResp,cServer):#When a server msg is received and parsed.
         global timeTagColor
         global nickTagColor
@@ -312,7 +317,10 @@ class MainForm:
         endMark = cServer.cTextBuffer.create_mark(None, cServer.cTextBuffer.get_end_iter(), True)
         chatTextView.scroll_to_mark(endMark,0)    
         
-        print servers[0].cRealname
+    """
+    onPrivMsg
+    When a PRIV message is received, this includes an ACTION message.
+    """
     def onPrivMsg(self,cResp,cServer):#When a normal msg is received and parsed.
         global timeTagColor
         global nickTagColor
@@ -346,11 +354,17 @@ class MainForm:
         #Get the selected iter
         model, selected = listTreeView.get_selection().get_selected()
         newlySelected = listTreeStore.get_value(selected, 0)
+        #Check to see if this channel is selected, and scroll the TextView if it is.
+        #If i don't do this the TextView will scroll even when you have another channel/server selected
+        #which is a bit annoying
         if newlySelected == rChannel.cName:
             #Scroll the TextView to the bottom...                                   
             endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
             chatTextView.scroll_to_mark(endMark,0)     
-       
+    """
+    onJoinMsg
+    When a JOIN message is received.(When a user joins a channel)
+    """
     def onJoinMsg(self,cResp,cServer):#When a user joins a channel
         global successTagColor
         global nickTagColor
@@ -360,6 +374,7 @@ class MainForm:
             print ch.cName,cResp.channel
             if ch.cName.lower() == cResp.channel.lower():
                 rChannel = ch
+
 
         nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
         timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey    
@@ -373,11 +388,18 @@ class MainForm:
         #Get the selected iter
         model, selected = listTreeView.get_selection().get_selected()
         newlySelected = listTreeStore.get_value(selected, 0)
+        #Check to see if this channel is selected, and scroll the TextView if it is.
+        #If i don't do this the TextView will scroll even when you have another channel/server selected
+        #which is a bit annoying
         if newlySelected == rChannel.cName:#If the selected channel is this one then scroll otherwise it would scroll it weirdly.
             #Scroll the TextView to the bottom...                                   
             endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
             chatTextView.scroll_to_mark(endMark,0)
 
+    """
+    onQuitMsg
+    When a QUIT message is received.(When a user quits server)
+    """
     def onQuitMsg(self,cResp,cServer):
         global partTagColor
         global nickTagColor
@@ -422,12 +444,18 @@ class MainForm:
                         #Get the selected iter
                         model, selected = listTreeView.get_selection().get_selected()
                         newlySelected = listTreeStore.get_value(selected, 0)
+                        #Check to see if this channel is selected, and scroll the TextView if it is.
+                        #If i don't do this the TextView will scroll even when you have another channel/server selected
+                        #which is a bit annoying
                         if newlySelected == rChannel.cName:
                             #Scroll the TextView to the bottom...                                   
                             endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
                             chatTextView.scroll_to_mark(endMark,0)
                     
-                            
+    """
+    onPartMsg
+    When a PART message is received.(A user leaves a channel)
+    """                     
     def onPartMsg(self,cResp,cServer):
         global partTagColor
         global nickTagColor
@@ -449,11 +477,18 @@ class MainForm:
         #Get the selected iter
         model, selected = listTreeView.get_selection().get_selected()
         newlySelected = listTreeStore.get_value(selected, 0)
+        #Check to see if this channel is selected, and scroll the TextView if it is.
+        #If i don't do this the TextView will scroll even when you have another channel/server selected
+        #which is a bit annoying
         if newlySelected == rChannel.cName:
             #Scroll the TextView to the bottom...                                   
             endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
             chatTextView.scroll_to_mark(endMark,0)
 
+    """
+    onNoticeMsg
+    When a NOTICE message is received.
+    """
     def onNoticeMsg(self,cResp,cServer):
         global highlightTagColor
         global nickTagColor
@@ -481,6 +516,9 @@ class MainForm:
             #Get the selected iter
             model, selected = listTreeView.get_selection().get_selected()
             newlySelected = listTreeStore.get_value(selected, 0)
+            #Check to see if this channel is selected, and scroll the TextView if it is.
+            #If i don't do this the TextView will scroll even when you have another channel/server selected
+            #which is a bit annoying
             if newlySelected == rChannel.cName:
                 #Scroll the TextView to the bottom...                                   
                 endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
@@ -496,12 +534,18 @@ class MainForm:
             #Get the selected iter
             model, selected = listTreeView.get_selection().get_selected()
             newlySelected = listTreeStore.get_value(selected, 0)
+            #Check to see if this server is selected, and scroll the TextView if it is.
+            #If i don't do this the TextView will scroll even when you have another channel/server selected
+            #which is a bit annoying
             if newlySelected == cServer.cName:
                 #Scroll the TextView to the bottom...                                   
                 endMark = cServer.cTextBuffer.create_mark(None, cServer.cTextBuffer.get_end_iter(), True)
                 chatTextView.scroll_to_mark(endMark,0)
 
-
+    """
+    onKickMsg
+    When a KICK message is received.(When a operator kicks another user from a channel)
+    """
     def onKickMsg(self,cResp,cServer):
         #Get the textbuffer for the right channel.
         for ch in cServer.channels:
@@ -524,6 +568,9 @@ class MainForm:
         #Get the selected iter
         model, selected = listTreeView.get_selection().get_selected()
         newlySelected = listTreeStore.get_value(selected, 0)
+        #Check to see if this channel is selected, and scroll the TextView if it is.
+        #If i don't do this the TextView will scroll even when you have another channel/server selected
+        #which is a bit annoying
         if newlySelected == rChannel.cName:
             #Scroll the TextView to the bottom...                                   
             endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
@@ -532,6 +579,10 @@ class MainForm:
         if personWhoWasKicked == cServer.cNick:
             IRCHelper.join(cServer,rChannel.cName,cServer.listTreeStore)
 
+    """
+    onNickChange
+    When a NICK message is received.(When a user changes his nick or someone else(like a service) changes a users nick)
+    """
     def onNickChange(self,cResp,cServer):
         global partTagColor
         global nickTagColor
@@ -550,12 +601,15 @@ class MainForm:
             partTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=partTagColor)#Green
 
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
-            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," <>" + " ",nickTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >!<" + " ",nickTag)
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick + " is now known as " + cResp.msg + "\n",partTag)
 
             #Get the selected iter
             model, selected = listTreeView.get_selection().get_selected()
             newlySelected = listTreeStore.get_value(selected, 0)
+            #Check to see if this channel is selected, and scroll the TextView if it is.
+            #If i don't do this the TextView will scroll even when you have another channel/server selected
+            #which is a bit annoying
             if newlySelected == rChannel.cName:
                 #Scroll the TextView to the bottom...                                   
                 endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
@@ -579,12 +633,15 @@ class MainForm:
                         partTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=partTagColor)#Green
 
                         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
-                        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," <>" + " ",nickTag)
+                        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >!<" + " ",nickTag)
                         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick + " is now known as " + cResp.msg + "\n",partTag)
 
                         #Get the selected iter
                         model, selected = listTreeView.get_selection().get_selected()
                         newlySelected = listTreeStore.get_value(selected, 0)
+                        #Check to see if this channel is selected, and scroll the TextView if it is.
+                        #If i don't do this the TextView will scroll even when you have another channel/server selected
+                        #which is a bit annoying
                         if newlySelected == rChannel.cName:
                             #Scroll the TextView to the bottom...                                   
                             endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
@@ -592,8 +649,10 @@ class MainForm:
 
                         #Search for the user and change his name.(in the treeview)
                         for user in rChannel.cUsers:
-                            if user.cNick == cResp.nick:
+                            if user.cNick.lower() == cResp.nick.lower():
                                 print "Setting-" + cResp.msg
+                                print rChannel.cTreeIter,user.cTreeIter
+                                print "USER =",cServer.listTreeStore.get_value(user.cTreeIter,0)
                                 cServer.listTreeStore.set_value(user.cTreeIter,0,cResp.msg)                        
                                 user.cNick = cResp.msg
 
@@ -622,6 +681,12 @@ class MainForm:
 
             IRCHelper.sendMsg(server,splitText[0],msg)
             return True
+        if text.startswith("/nick"):
+            print "NICK " + text.replace("/nick ","")
+            server.cSocket.send("NICK " + text.replace("/nick ","") + "\r\n")
+            return True
+            
+
         if text.startswith("/raw"):
             splitText = text.replace("/raw ","").split(" ")
             rawMsg = ""

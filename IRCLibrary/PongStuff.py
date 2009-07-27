@@ -146,27 +146,39 @@ def userStuff(server,i):#The user list.
                 print others,hops,ops,admins,owners
                 #Add the Owners, to the list of users.
                 for user in owners:
-                    usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("founder")])
+                    for cUsr in channel.cUsers:
+                        if cUsr.cNick == user:
+                            cUsr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("founder")])
                 #Add the admins, to the list of users
                 for user in admins:
                     if itrContainsString(user,server.listTreeStore.iter_children(channel.cTreeIter),server.listTreeStore) == False:
-                        usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("admin")])
+                        for cUsr in channel.cUsers:
+                            if cUsr.cNick == user:
+                                cUsr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("admin")])
                 #Add the operators, to the list of users
                 for user in ops:
                     if itrContainsString(user,server.listTreeStore.iter_children(channel.cTreeIter),server.listTreeStore) == False:
-                        usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("op")])
+                        for cUsr in channel.cUsers:
+                            if cUsr.cNick == user:
+                                cUsr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("op")])
                 #Add the half operators, to the list of users
                 for user in hops:
                     if itrContainsString(user,server.listTreeStore.iter_children(channel.cTreeIter),server.listTreeStore) == False:
-                        usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("hop")])  
+                        for cUsr in channel.cUsers:
+                            if cUsr.cNick == user:
+                                cUsr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("hop")])  
                 #Add the voices, to the list of users
                 for user in vs:
                     if itrContainsString(user,server.listTreeStore.iter_children(channel.cTreeIter),server.listTreeStore) == False:
-                        usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("voice")])
+                        for cUsr in channel.cUsers:
+                            if cUsr.cNick == user:
+                                cUsr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,lookupIcon("voice")])
                 #Add the rest, to the list of users
                 for user in others:
                     if itrContainsString(user,server.listTreeStore.iter_children(channel.cTreeIter),server.listTreeStore) == False:
-                        usr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,None])
+                        for cUsr in channel.cUsers:
+                            if cUsr.cNick == user:
+                                cUsr.cTreeIter = server.listTreeStore.append(channel.cTreeIter,[user,None])
 
                 for event in IRC.eventFunctions:
                     if event.eventName == "onUsersChange" and event.cServer == server:
@@ -204,12 +216,7 @@ def lookupIcon(icon):
     for stock in stock_ids:
         if stock == icon:
             return stock
-    
-        
-    
-
 #!--USERS STUFF END--!#
-
 
 def quitResp(server,i):#The quit message
     #!--QUIT MSG--!#
@@ -222,6 +229,7 @@ def quitResp(server,i):#The quit message
                     if event.eventName == "onQuitMsg" and event.cServer == server:
                         gobject.idle_add(event.aFunc,m,server)
     #!--QUIT MSG END--!#
+
 def joinResp(server,i):#The join message
     global USERS
     global UsersStarted
@@ -231,10 +239,17 @@ def joinResp(server,i):#The join message
         if m is not False:
             #Make sure it's a JOIN msg.
             if m.typeMsg == "JOIN":
+                nChannel = IRC.channel()
+                nChannel.cName = m.channel
+                nChannel.cTextBuffer = gtk.TextBuffer()
+                nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.channel,None])
+                #Add the newly JOINed channel to the Servers channel list
+                server.channels.append(nChannel)
+
                 for event in IRC.eventFunctions:
                     if event.eventName == "onJoinMsg" and event.cServer == server:
                         gobject.idle_add(event.aFunc,m,server)
-                #If it's this user.(Then it means you just connected, so this is the User list)
+                #If it's this user that joined.(Then it means you just connected, so this is the User list)
                 if m.nick == server.cNick:
                     print "Nick is the same, parseUsers!"
                     UsersStarted = True
