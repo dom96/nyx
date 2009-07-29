@@ -190,7 +190,6 @@ class MainForm:
         selection = self.TreeView1.get_selection()
         selection.connect('changed', self.TreeView_OnSelectionChanged)
 
-
         #HBox - For the TextView and EntryBox
         self.VBox1 = gtk.VBox()
         self.HPaned1.add(self.VBox1)
@@ -213,7 +212,6 @@ class MainForm:
         self.chatTextView.set_border_window_size(gtk.TEXT_WINDOW_BOTTOM,1)
         #Borders-Color
         self.chatTextView.modify_bg(gtk.STATE_NORMAL,gtk.gdk.Color(red=124 * 257,green=124 * 257 ,blue=124 * 257,pixel=0))
-
 
         self.chatScrolledWindow.add(self.chatTextView)
         self.chatTextView.show()
@@ -331,12 +329,16 @@ class MainForm:
 
         #If the "Channel" in the cResp is your nick, add it to the currently selected channel/server
         if cResp.channel == nickname:
+            #Get the server first, this way if the selected chanel isn't found it's not gonna generate an exception
+                        
             #Get the selected iter
             model, selected = listTreeView.get_selection().get_selected()
             treeiterSelected = listTreeStore.get_value(selected, 0)
             for ch in cServer.channels:
                 if ch.cName.lower() == treeiterSelected:
                     rChannel = ch
+            
+
 
         nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
         timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey     

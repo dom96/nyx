@@ -239,12 +239,13 @@ def joinResp(server,i):#The join message
         if m is not False:
             #Make sure it's a JOIN msg.
             if m.typeMsg == "JOIN":
-                nChannel = IRC.channel()
-                nChannel.cName = m.channel
-                nChannel.cTextBuffer = gtk.TextBuffer()
-                nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.channel,None])
-                #Add the newly JOINed channel to the Servers channel list
-                server.channels.append(nChannel)
+                if m.nick == server.cNick:
+                    nChannel = IRC.channel()
+                    nChannel.cName = m.channel
+                    nChannel.cTextBuffer = gtk.TextBuffer()
+                    nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.channel,None])
+                    #Add the newly JOINed channel to the Servers channel list
+                    server.channels.append(nChannel)
 
                 for event in IRC.eventFunctions:
                     if event.eventName == "onJoinMsg" and event.cServer == server:
