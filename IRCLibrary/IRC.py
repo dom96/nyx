@@ -35,7 +35,6 @@ gobject.threads_init()
 eventFunctions = [] #A list of all the connected events(eventDef() class)
 
 
-
 #Connects to a server(Starts everything)
 #Address=string,nick=string,realname=string,port=integer,server=server class,queue()
 
@@ -50,28 +49,44 @@ def connect(address, nick, realname,port,server):
     print "Connecting to:" + address
     server.cSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Make a new socket
     server.cSocket.connect((address, port)) #Connect to the server
-    data = server.cSocket.recv(1024) #Receive the response
-    print data
-    datParsed = ResponseParser.parse(data,True,False)
-    for event in eventFunctions:
-        if event.eventName == "onServerMsg" and event.cServer == server:
-            event.aFunc(datParsed,server)
+
+    #Start the while loop, in another thread, so that i can return the server.
+    gtk.gdk.threads_enter()
+    thread.start_new(pingPong,(server,))
+    gtk.gdk.threads_leave()
+    """
+    I've put it here, because now it gets the server responses too.
+    This let's it not hang, on servers when there is no reply to the USER message or the NICK message.        
+    """
+
+    #data = server.cSocket.recv(1024) #Receive the response
+    #print data
+    #datParsed = ResponseParser.parse(data,True,False)
+    #for event in eventFunctions:
+        #if event.eventName == "onServerMsg" and event.cServer == server:
+            #event.aFunc(datParsed,server)
+
     print "Sending NICK"
     #Send the "NICK" command, to the server, this is the third command to be sent to the server.And last step to connect.
     server.cSocket.send('NICK ' + nick + ' \r\n') # NICK >nick< CR-LF
     #Don't wait for responses to the NICK command
+    #data = server.cSocket.recv(1024) #Receive the response
+    #print data
+    #datParsed = ResponseParser.parse(data,True,False)
+    #for event in eventFunctions:
+        #if event.eventName == "onServerMsg" and event.cServer == server:
+            #event.aFunc(datParsed,server)
+
 
     print "Sending USER"
     #Send the "USER" command, to the server, this is the second command to be sent to the server.
     server.cSocket.send("USER " + nick + " " + nick + " " + address + " :" + realname + "\r\n") # USER >nick< >nick< >address< :>realname< CR-LF 
-    #server.cSocket.send("USER %s %s %s :%s \r\n" %
-              #(nick, "8", "*", realname))
-    data = server.cSocket.recv(1024) #Receive the response
-    print data
-    datParsed = ResponseParser.parse(data,True,False)
-    for event in eventFunctions:
-        if event.eventName == "onServerMsg" and event.cServer == server:
-            event.aFunc(datParsed,server)
+    #data = server.cSocket.recv(1024) #Receive the response
+    #print data
+    #datParsed = ResponseParser.parse(data,True,False)
+    #for event in eventFunctions:
+        #if event.eventName == "onServerMsg" and event.cServer == server:
+            #event.aFunc(datParsed,server)
 
 
 
@@ -81,15 +96,7 @@ def connect(address, nick, realname,port,server):
     server.cRealname = realname
     server.cPort = port
     server.cName = address
-    
-    #Start the while loop, in another thread, so that i can return the server.
-    gtk.gdk.threads_enter()
-    thread.start_new(pingPong,(server,))
-    gtk.gdk.threads_leave()
 
-    
-    #queue.put(server)
-    #return server
 
 def pingPong(server):
     MOTDStarted = False
@@ -102,11 +109,12 @@ def pingPong(server):
             data = server.cSocket.recv(4096)
             msg = data
             if msg !="":
-                print "Raw received data from server:" + msg
+                print "Raw received data from server:\n \033[1;32m" + msg + " \033[1;m"
                 if msg.startswith("PING"): #If the server sends a PING command...
-                    print "Received PING( " + msg + " ), Replying with PONG \n"
-                    server.cSocket.send("PONG " + msg.split(":")[1] + " \n") #Reply with a PONG command, to keep the connection alive.
-                    print "Replied to Ping with: " + "PONG " + msg.split(":")[1] + " \n"
+                    print "Received PING( \033[1;32m" + msg + "\033[1;m )"
+                    #Reply with a PONG command, to keep the connection alive.
+                    server.cSocket.send("PONG :" + msg.split(":")[1] + " \r\n") 
+                    print "Replied to Ping with: \033[1;32m" + "PONG :" + msg.split(":")[1] + " \033[1;m\r\n"
                 else:
                     for i in string.split(msg,"\n"):
                         #!--MOTD STUFF--!#
@@ -136,8 +144,10 @@ def pingPong(server):
                         #!--NICK MSG--!#
                         PongStuff.nickResp(server,i)
                         #!--NICK MSG END--!#
+                        #!--SERVER MSG--!#
+                        PongStuff.servResp(server,i)
+                        #!--SERVER MSG END--!#      
 
-      
         except:
             traceback.print_exc()   
 

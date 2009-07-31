@@ -300,7 +300,7 @@ class MainForm:
         global timeTagColor
         global nickTagColor
         global serverMsgTagColor
-
+        
         serverMsgTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=serverMsgTagColor)#Orange
         nickTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
         timeTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey 
@@ -330,15 +330,13 @@ class MainForm:
         #If the "Channel" in the cResp is your nick, add it to the currently selected channel/server
         if cResp.channel == nickname:
             #Get the server first, this way if the selected chanel isn't found it's not gonna generate an exception
-                        
+            rChannel = cServer
             #Get the selected iter
             model, selected = listTreeView.get_selection().get_selected()
             treeiterSelected = listTreeStore.get_value(selected, 0)
             for ch in cServer.channels:
                 if ch.cName.lower() == treeiterSelected:
                     rChannel = ch
-            
-
 
         nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
         timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey     
@@ -347,7 +345,10 @@ class MainForm:
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," @" + " " + cResp.nick,nickTag)
             rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter(),cResp.msg.replace("ACTION","").replace("","") + "\n")
-            
+        elif "" in cResp.msg:
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >!<",nickTag)
+            rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter()," Received CTCP " + cResp.msg.replace("","") + " from " + cResp.nick + "\n")
         else:
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," " + cResp.nick + ": ",nickTag)
@@ -432,7 +433,8 @@ class MainForm:
             #so i have to check if the person who QUIT is in any of the channels that i'm on, and notify the user on the correct channel.
             for ch in cServer.channels:
                 for user in ch.cUsers:
-                    if cResp.nick.lower() in user.cNick.lower():
+                    print "\033[1;35mQUIT Message, Finding the channels \033[1;35m" + cResp.nick.lower() + "\033[1;m is on.(" + "Current user is " + user.cNick.lower() + ") Current Channel is " + ch.cName + "\033[1;m"
+                    if cResp.nick.lower() == user.cNick.lower():
                         rChannel = ch
 
                         nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
@@ -470,7 +472,6 @@ class MainForm:
         nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
         timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey    
         partTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=partTagColor)#Green
-
 
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," <--" + " ",nickTag)

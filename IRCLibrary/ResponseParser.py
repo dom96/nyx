@@ -24,7 +24,7 @@ import string
 import traceback
 import re
 import thread
-import IRC
+import IRC,PongStuff
 
 #Parses response data from a server and outputs it in a nice structure.
 #data=string(The response from the server), server=boolean(whether it's a server response, or a general while loop response(a user joining or a msg)
@@ -72,11 +72,12 @@ def parseServer(data):
             else:        
                 m = serverMsg()
                 #Second method of parsing, used if the command doesn't have a : when the message starts(only has : at the beggining) 
-                
+                #Well it's actually used when there is no NOTICE AUTH in the message                
+
                 splitI = string.split(i) #Split the command with " "
-                print splitI
+                #print splitI
                 if len(splitI) > 0:
-                    hSplitI=0#The position in the splitI where the message starts(-1)
+                    hSplitI=0 #The position in the splitI where the message starts(-1)
                     try:
                         m.server = splitI[0] #The server, next.spotchat.org
                         m.code = splitI[1] #The code, 001
@@ -87,12 +88,16 @@ def parseServer(data):
                         except:
                             hSplitI=2
 
+                        if m.code in PongStuff.numericCode():
+                            hSplitI=2
+                        
                     except:#If there is an exception in the above code, try this without getting the server info(i think..)
+                        traceback.print_exc()
                         m.code = splitI[0]
                         m.nick = splitI[1]
                         hSplitI=1
                 
-                    count=0            
+                    count=0
                     for i in splitI:#Add all the parts of the message, to the m.msg
                         if count > hSplitI:
                             m.msg = m.msg + " " + i
@@ -220,7 +225,7 @@ def parseUsers(data,server,nChannel):
             if UserLstStart==True and servResp[0].code != "353":
                 UserLstCmds += i
     
-    UsersTuple = []
+    UsersList = []
     #Now add the users to a nice tuple(list)
     splitUsers=string.split(UserLstCmds,"\n")
     #print splitUsers
@@ -230,10 +235,10 @@ def parseUsers(data,server,nChannel):
         spUsr=string.split(users)
         
         for usr in spUsr:
-            UsersTuple.append(usr)
+            UsersList.append(usr)
 
 
-    return UsersTuple
+    return UsersList
     
 def parseKick(data):
     #:dom96!~dom96@SpotChat-35F85EEE.range217-43.btcentralplus.com KICK #python dom96 :for nyx

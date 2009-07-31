@@ -1,0 +1,13 @@
+
+Traceback (most recent call last):
+  File "/home/dominik/Desktop/Projects/Nyx/Tests/stderrTest/test.py", line 10, in <module>
+    raise test("hi")
+NameError: name 'test' is not defined
+Traceback (most recent call last):
+  File "/home/dominik/Desktop/Projects/Nyx/Tests/stderrTest/test.py", line 11, in <module>
+    raise test("hi")
+NameError: name 'test' is not defined
+Traceback (most recent call last):
+  File "/home/dominik/Desktop/Projects/Nyx/Tests/stderrTest/test.py", line 11, in <module>
+    raise test("hi")
+NameError: name 'test' is not defined

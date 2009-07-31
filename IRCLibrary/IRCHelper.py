@@ -30,19 +30,6 @@ import ResponseParser
 #JOIN, Joins a channel.
 def join(server,cChannel,listTreeStore):
     server.cSocket.send("JOIN " + cChannel + "\r\n")
-    #data = server.cSocket.recv(1024)
-    #print data
-    #Set the channel info....
-    """
-    nChannel = IRC.channel()
-    nChannel.cName = cChannel
-    nChannel.cTextBuffer = gtk.TextBuffer()
-    
-    #...add it to the servers channels list.
-    server.channels.append(nChannel)
-    nChannel.cTreeIter = listTreeStore.append(listTreeStore.get_iter(0),[cChannel,None])
-    """
-
 #sendMsg, Sends a PRIVMSG(message) to the channel specified.
 def sendMsg(server,cChannel,msg):
     server.cSocket.send("PRIVMSG " + cChannel + " :" + msg + " \r\n") 
