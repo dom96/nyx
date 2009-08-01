@@ -88,7 +88,6 @@ def nickResp(server,i):
                         gobject.idle_add(event.aFunc,m,server)
 
 
-
 def kickResp(server,i):
     if "KICK" in i:
         m = ResponseParser.parseKick(i)
@@ -292,12 +291,19 @@ def joinResp(server,i):#The join message
             #Make sure it's a JOIN msg.
             if m.typeMsg == "JOIN":
                 if m.nick == server.cNick:
-                    nChannel = IRC.channel()
-                    nChannel.cName = m.channel
-                    nChannel.cTextBuffer = gtk.TextBuffer()
-                    nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.channel,None])
-                    #Add the newly JOINed channel to the Servers channel list
-                    server.channels.append(nChannel)
+                    addNewUser=True
+
+                    for ch in server.channels:
+                        if ch.cName == m.channel:
+                            addNewUser=False
+
+                    if addNewUser==True:
+                        nChannel = IRC.channel()
+                        nChannel.cName = m.channel
+                        nChannel.cTextBuffer = gtk.TextBuffer()
+                        nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.channel,None])
+                        #Add the newly JOINed channel to the Servers channel list
+                        server.channels.append(nChannel)
 
                 for event in IRC.eventFunctions:
                     if event.eventName == "onJoinMsg" and event.cServer == server:
