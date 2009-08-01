@@ -22,9 +22,9 @@ listTreeStore = gtk.TreeStore(str,str)#For the list of servers,channels,users
 listTreeView = gtk.TreeView
 
 #Info
-serverAddr = "ikey.dynalias.com"
+serverAddr = "irc.archerseven.dynalias.com"
 channelName = "#freenode"
-port = 6667
+port = 6669
 nickname = "Nyx1"
 
 servers = [] #List of Servers, server()
