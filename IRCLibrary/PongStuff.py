@@ -331,10 +331,16 @@ def privmsgResp(server,i):#the private msg(Normal message)
     if "PRIVMSG" in i:
         m = ResponseParser.parseMsg(i)
         if m is not False:
+
             #!--CTCP VERSION--!#
             if "VERSION" in m.msg:
-                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 (C) 2009 Mad Dog software")
+                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 020809 Copyleft 2009 Mad Dog software")
             #!--CTCP VERSION END--!#
+            #!--CTCP TIME!#
+            if "TIME" in m.msg:
+                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 020809 Copyleft 2009 Mad Dog software")
+            #!--CTCP TIME END !#
+            
             #Call all the onPrivMsg events
             for event in IRC.eventFunctions:
                 if event.eventName == "onPrivMsg" and event.cServer == server:

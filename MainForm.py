@@ -22,10 +22,10 @@ listTreeStore = gtk.TreeStore(str,str)#For the list of servers,channels,users
 listTreeView = gtk.TreeView
 
 #Info
-serverAddr = "irc.archerseven.dynalias.com"
+serverAddr = "ikey.dynalias.com"
 channelName = "#freenode"
-port = 6669
-nickname = "Nyx1"
+port = 6667
+nickname = "Nyx"
 
 servers = [] #List of Servers, server()
 
@@ -335,7 +335,7 @@ class MainForm:
             model, selected = listTreeView.get_selection().get_selected()
             treeiterSelected = listTreeStore.get_value(selected, 0)
             for ch in cServer.channels:
-                if ch.cName.lower() == treeiterSelected:
+                if ch.cName.lower() == treeiterSelected.lower():
                     rChannel = ch
 
         nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
@@ -352,13 +352,14 @@ class MainForm:
             rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter()," Received CTCP " + cResp.msg.replace("","") + " from " + cResp.nick + "\n")
         else:
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
+
             #If it's a Private Message to you not the channel.
             if cResp.channel == cServer.cNick:
                 rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," )",highlightTag)
                 rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick,nickTag)
                 rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"(",highlightTag)
                 rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),": ",nickTag)
-            #If it's a message to the channel 
+            #If it's a message to the channel
             else:           
                 rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," " + cResp.nick + ": ",nickTag)
 
