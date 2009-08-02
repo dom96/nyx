@@ -146,7 +146,10 @@ def pingPong(server):
                         #!--NICK MSG END--!#
                         #!--SERVER MSG--!#
                         PongStuff.servResp(server,i)
-                        #!--SERVER MSG END--!#      
+                        #!--SERVER MSG END--!#
+                        
+                        
+                        
 
         except:
             traceback.print_exc()   

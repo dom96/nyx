@@ -328,7 +328,7 @@ class MainForm:
                 rChannel = ch
 
         #If the "Channel" in the cResp is your nick, add it to the currently selected channel/server
-        if cResp.channel == nickname:
+        if cResp.channel == cServer.cNick:
             #Get the server first, this way if the selected chanel isn't found it's not gonna generate an exception
             rChannel = cServer
             #Get the selected iter
@@ -339,7 +339,8 @@ class MainForm:
                     rChannel = ch
 
         nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
-        timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey     
+        timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey 
+        highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=highlightTagColor)#Red    
 
         if "ACTION" in cResp.msg:
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
@@ -351,7 +352,16 @@ class MainForm:
             rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter()," Received CTCP " + cResp.msg.replace("","") + " from " + cResp.nick + "\n")
         else:
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
-            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," " + cResp.nick + ": ",nickTag)
+            #If it's a Private Message to you not the channel.
+            if cResp.channel == cServer.cNick:
+                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," )",highlightTag)
+                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick,nickTag)
+                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"(",highlightTag)
+                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),": ",nickTag)
+            #If it's a message to the channel 
+            else:           
+                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," " + cResp.nick + ": ",nickTag)
+
             rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter(),cResp.msg + "\n")
 
         #Get the selected iter
