@@ -129,8 +129,8 @@ def parseMOTD(data):
             m = serverMsg()
             i = i[1:]
             #print i
-            for g in re.finditer("(:)[^:]+", i):#Get the last : and the etxt after it
-                m.msg += unicode(g.group(0), 'iso8859_2') 
+            for g in re.finditer("(:)[^:]+", i):#Get the last : and the text after it
+                m.msg += unicode(g.group(0), 'utf-8') 
 
             #print m.msg            
             mList.append(m)
@@ -160,23 +160,22 @@ def parseMsg(data):
         #print splitMsg
         m = privMsg()
         m.nick = string.strip(string.split(splitMsg[0],"!")[0],":")
-        print m.nick
         m.host = string.strip(string.split(splitMsg[0],"!")[1],":")
         m.typeMsg = string.strip(splitMsg[1],":")
         try:
             m.channel = string.strip(splitMsg[2],":").replace(" ","")        
             if splitMsg[2].startswith(":"):
-                
                 msgInt = msgInt - 1
+
         except:        
             msgInt = msgInt - 1
 
         for i in range(len(splitMsg)):
             if i > msgInt:
                 if i != msgInt+1:
-                    m.msg += unicode(splitMsg[i], 'iso8859_2') + " "
+                    m.msg += unicode(splitMsg[i], 'utf-8') + " "
                 elif i == msgInt+1 and splitMsg[i].startswith(":"):
-                    m.msg += unicode(splitMsg[i][1:], 'iso8859_2') + " "
+                    m.msg += unicode(splitMsg[i][1:], 'utf-8') + " "
         
         m.msg = m.msg[:-1]
 
@@ -276,6 +275,42 @@ def parseKick(data):
 
     return m
 
+#Parses PRIVMSG
+def parseMode(data):
+        #:ChanServ!services@ArcherNet.net MODE ## +o Nyx1
+    try:
+        splitMsg = string.split(data)
+        # :ChanServ!services@ArcherNet.net
+        # MODE
+        # ##
+        # +o 
+        # Nyx1
+        msgInt = 2
+        #print splitMsg
+        m = privMsg()
+        m.nick = string.strip(string.split(splitMsg[0],"!")[0],":")
+        m.host = string.strip(string.split(splitMsg[0],"!")[1],":")
+        m.typeMsg = string.strip(splitMsg[1],":")
+        try:
+            m.channel = string.strip(splitMsg[2],":").replace(" ","")        
+            if splitMsg[2].startswith(":"):
+                msgInt = msgInt - 1
+
+        except:        
+            msgInt = msgInt - 1
+
+        for i in range(len(splitMsg)):
+            if i > msgInt:
+                if i != msgInt:
+                    m.msg += unicode(splitMsg[i], 'iso8859_2') + " "
+        
+        m.msg = m.msg[:-1]
+    except:
+        print "Error in parseMode"
+        traceback.print_exc()
+        return False  
+
+    return m
 
 
 #A structure of a message(response from a server)

@@ -92,7 +92,7 @@ class MainForm:
         IRC.connectEvent("onNoticeMsg",self.onNoticeMsg,self.nServer)
         IRC.connectEvent("onKickMsg",self.onKickMsg,self.nServer)
         IRC.connectEvent("onNickChange",self.onNickChange,self.nServer)
-        IRC.connectEvent("onUsersChange",self.onUsersChange,self.nServer)
+        IRC.connectEvent("onModeChange",self.onModeChange,self.nServer)
 
         #Start a new a connection to a server(Multi threaded)
         gtk.gdk.threads_enter()
@@ -140,22 +140,17 @@ class MainForm:
         self.MenuVBox.pack_end(self.HPaned1)
         self.HPaned1.show()
     
-        #TreeView - Treeview for the channels and servers(like in xchat lol :P)
-
-        #Create the EventBox to change the border color, of it.
-        self.treeEb = gtk.EventBox()
-        self.treeEb.modify_bg(gtk.STATE_NORMAL,gtk.gdk.Color(red=124 * 257,green=124 * 257 ,blue=124 * 257,pixel=0))  
-        self.HPaned1.add(self.treeEb)
+        #TreeView - Treeview for the channels and servers(like in xchat lol :P) 
+        
         self.treeScrolledWindow = gtk.ScrolledWindow()
         self.treeScrolledWindow.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
+        self.HPaned1.add(self.treeScrolledWindow)
 
         self.TreeView1 = gtk.TreeView(listTreeStore)
-        self.treeScrolledWindow.set_border_width(1)
-      
-        self.treeEb.add(self.treeScrolledWindow)
+        self.treeScrolledWindow.set_shadow_type(gtk.SHADOW_IN)      
+
         self.treeScrolledWindow.add(self.TreeView1)
         self.treeScrolledWindow.show()
-        self.treeEb.show()
         self.TreeView1.show()
 
         listTreeView = self.TreeView1
@@ -205,6 +200,7 @@ class MainForm:
         self.chatTextView.set_wrap_mode(gtk.WRAP_WORD)
         self.chatTextView.set_editable(False)
         self.chatTextView.modify_font(pango.FontDescription("monospace 9"))
+
         #Borders
         self.chatTextView.set_border_window_size(gtk.TEXT_WINDOW_LEFT,1)
         self.chatTextView.set_border_window_size(gtk.TEXT_WINDOW_RIGHT,1)
@@ -238,6 +234,7 @@ class MainForm:
         if wText.startswith(" "):
             wText = wText[1:]
 
+        #Add what you said to the TextView
         if self.entryBoxCheck(wText,servers[0]) == False:
             IRCHelper.sendMsg(servers[0],cChannel.cName,wText)
 
@@ -279,14 +276,13 @@ class MainForm:
     """
     def onMotdMsg(self,cResp,cServer):#When a MOTD message is received and parsed.
         global chatTextView
-
+        print "onMotdMsg"
         cServer.cTextBuffer.insert_with_tags_by_name(cServer.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()) + "\n","timeTag")
-        msg = ""
+
         for m in cResp:
             if m.msg != "":
-                msg += ">" + m.msg                
-
-        cServer.cTextBuffer.insert_with_tags_by_name(cServer.cTextBuffer.get_end_iter(),msg + "\n","serverMsgTag")
+                cServer.cTextBuffer.insert_with_tags_by_name(cServer.cTextBuffer.get_end_iter(),">" + m.msg + "\n","serverMsgTag")
+                print "\033[1;35m" + m.msg + "\033[1;m"
 
         #Scroll the TextView to the bottom...                                   
         endMark = chatTextView.get_buffer().create_mark(None, chatTextView.get_buffer().get_end_iter(), True)
@@ -328,7 +324,7 @@ class MainForm:
                 rChannel = ch
 
         #If the "Channel" in the cResp is your nick, add it to the currently selected channel/server
-        if cResp.channel == cServer.cNick:
+        if cResp.channel.lower() == cServer.cNick.lower():
             #Get the server first, this way if the selected chanel isn't found it's not gonna generate an exception
             rChannel = cServer
             #Get the selected iter
@@ -363,7 +359,13 @@ class MainForm:
             else:           
                 rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," " + cResp.nick + ": ",nickTag)
 
-            rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter(),cResp.msg + "\n")
+            #Make a tag for the message
+            msgTag = rChannel.cTextBuffer.create_tag(None)
+            if cServer.cNick.lower() in cResp.msg.lower():
+                msgTag.set_property("foreground-gdk",highlightTagColor)
+
+
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.msg + "\n",msgTag)
 
         #Get the selected iter
         model, selected = listTreeView.get_selection().get_selected()
@@ -672,9 +674,45 @@ class MainForm:
 
 
                         #Search the name in the Users
-    def onUsersChange(self):
-        global listTreeView
-        #listTreeView.expand_all()
+    """
+    onModeChange
+    When a user changes his/her/someones MODE 
+    """
+    def onModeChange(self,cResp,cServer):
+        #Get the textbuffer for the right channel.
+        for ch in cServer.channels:
+            if ch.cName.lower() == cResp.channel.lower():
+                rChannel = ch
+
+        nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
+        timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey    
+        highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=highlightTagColor)#Green
+    
+        print "cResp.msg=" + cResp.msg
+        mode = cResp.msg.split()[0]
+        personModeChange = cResp.msg.split()[1] #Person who's mode got changed
+
+        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
+        #>!<
+        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >",highlightTag)
+        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"!",nickTag)
+        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"< ",highlightTag)
+
+        #nick
+        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick,nickTag)
+        # sets mode +o for dom96
+        rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter()," sets mode " + mode + " for " + personModeChange + "\n")
+
+        #Get the selected iter
+        model, selected = listTreeView.get_selection().get_selected()
+        newlySelected = listTreeStore.get_value(selected, 0)
+        #Check to see if this channel is selected, and scroll the TextView if it is.
+        #If i don't do this the TextView will scroll even when you have another channel/server selected
+        #which is a bit annoying
+        if newlySelected == rChannel.cName:
+            #Scroll the TextView to the bottom...                                   
+            endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
+            chatTextView.scroll_to_mark(endMark,0)
                             
 
     #||IRC Events end||#
@@ -710,7 +748,20 @@ class MainForm:
             server.cSocket.send(rawMsg + "\r\n")
             return True
 
-
+        """NEED TO MAKE THIS IN A SEPERATE FILE, ALL THE CTCP STUFF."""
+        if text.startswith("/version"):
+            IRCHelper.sendMsg(server,text.replace("/version ",""),"\x01VERSION\x01")
+            #PRIVMSG dom96 :VERSION
+            return True
+        if text.startswith("/ctcp"):
+            splitText = text.replace("/ctcp ","").split()
+            try:
+                to=splitText[0]#dom96 for example
+                ctcp=splitText[1]#VERSION for example
+                IRCHelper.sendMsg(server,to,"\x01" + ctcp + "\x01")
+            except:
+                pass
+            return True
 
         return False
 

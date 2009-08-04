@@ -104,53 +104,62 @@ def pingPong(server):
 
     UsersStarted = False
     USERS=""
+
+    msg = ""
     while(True):
         try:
-            data = server.cSocket.recv(4096)
-            msg = data
+            data = server.cSocket.recv(8192)
+            msg += data
             if msg !="":
-                print "Raw received data from server:\n \033[1;32m" + msg + " \033[1;m"
+                print "Raw received data from server:\n \033[1;32m" + data + " \033[1;m"
                 if msg.startswith("PING"): #If the server sends a PING command...
                     print "Received PING( \033[1;32m" + msg + "\033[1;m )"
                     #Reply with a PONG command, to keep the connection alive.
                     server.cSocket.send("PONG :" + msg.split(":")[1] + " \r\n") 
-                    print "Replied to Ping with: \033[1;32m" + "PONG :" + msg.split(":")[1] + " \033[1;m\r\n"
+                    print "Replied to Ping with: \033[1;34m" + "PONG :" + msg.split(":")[1] + " \033[1;m\r\n"
+                    msg=""
                 else:
-                    for i in string.split(msg,"\n"):
-                        #!--MOTD STUFF--!#
-                        PongStuff.motdStuff(server,i)
-                        #!--MOTD STUFF END--!#
-                        #!--PRIVMSG STUFF START--!#
-                        PongStuff.privmsgResp(server,i)
-                        #!--PRIVMSG STUFF END--!#
-                        #!--PART MSG--!#
-                        PongStuff.partResp(server,i)
-                        #!--PART MSG END--!#
-                        #!--JOIN MSG--!#
-                        PongStuff.joinResp(server,i)
-                        #!--JOIN MSG END--!#
-                        #!--QUIT MSG--!#
-                        PongStuff.quitResp(server,i)
-                        #!--QUIT MSG END--!#
-                        #!--USERS STUFF--!#
-                        PongStuff.userStuff(server,i)
-                        #!--USERS STUFF END--!#
-                        #!--NOTICE MSG--!#
-                        PongStuff.noticeResp(server,i)
-                        #!--NOTICE MSG END--!#
-                        #!--KICK MSG--!#
-                        PongStuff.kickResp(server,i)
-                        #!--KICK MSG END--!#
-                        #!--NICK MSG--!#
-                        PongStuff.nickResp(server,i)
-                        #!--NICK MSG END--!#
-                        #!--SERVER MSG--!#
-                        PongStuff.servResp(server,i)
-                        #!--SERVER MSG END--!#
-                        
-                        
-                        
+                    #If the message ends with \n (Carriage Return) then that means that the command is a full command
+                    #If not then that means that the last line of msg is a uncompletely received command. 
+                    if msg.endswith("\n"):
+                        for i in string.split(msg,"\n"):
+                            #!--MOTD STUFF--!#
+                            PongStuff.motdStuff(server,i)
+                            #!--MOTD STUFF END--!#
+                            #!--PRIVMSG STUFF START--!#
+                            PongStuff.privmsgResp(server,i)
+                            #!--PRIVMSG STUFF END--!#
+                            #!--PART MSG--!#
+                            PongStuff.partResp(server,i)
+                            #!--PART MSG END--!#
+                            #!--JOIN MSG--!#
+                            PongStuff.joinResp(server,i)
+                            #!--JOIN MSG END--!#
+                            #!--QUIT MSG--!#
+                            PongStuff.quitResp(server,i)
+                            #!--QUIT MSG END--!#
+                            #!--USERS STUFF--!#
+                            PongStuff.userStuff(server,i)
+                            #!--USERS STUFF END--!#
+                            #!--NOTICE MSG--!#
+                            PongStuff.noticeResp(server,i)
+                            #!--NOTICE MSG END--!#
+                            #!--KICK MSG--!#
+                            PongStuff.kickResp(server,i)
+                            #!--KICK MSG END--!#
+                            #!--NICK MSG--!#
+                            PongStuff.nickResp(server,i)
+                            #!--NICK MSG END--!#
+                            #!--SERVER MSG--!#
+                            PongStuff.servResp(server,i)
+                            #!--SERVER MSG END--!#
+                            #!--MODE MSG--!#
+                            PongStuff.modeResp(server,i)
+                            #!--MODE MSG END--!#
 
+                            #Reset the msg after parsing
+                            msg=""
+    
         except:
             traceback.print_exc()   
 

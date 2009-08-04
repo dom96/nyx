@@ -26,6 +26,7 @@ import re
 import thread
 import gobject
 import sys
+from time import *
 #Own imports
 import IRC
 import ResponseParser
@@ -38,6 +39,18 @@ USERS = ""
 MOTDStarted = False
 MOTD = ""
 
+#!--MODE CHANGE--!#
+def modeResp(server,i):
+    #:ChanServ!services@ArcherNet.net MODE ## +o Nyx1
+    if "MODE" in i:
+        m=ResponseParser.parseMode(i)
+        if m is not False:
+            if m.typeMsg == "MODE":
+                for event in IRC.eventFunctions:
+                    if event.eventName == "onModeChange" and event.cServer == server:
+                        gobject.idle_add(event.aFunc,m,server)
+
+#!--MODE CHANGE END--!#
 #!--servResp Stuff--!#
 def servResp(server,i):
     #Split into new lines \n
@@ -79,6 +92,7 @@ def nickResp(server,i):
         m = ResponseParser.parseMsg(i)
         if m is not False:
             if m.typeMsg == "NICK":
+                #If the person who changed their nick is you, change the nick in the server.
                 if m.nick == server.cNick:
                     server.cNick = m.msg
 
@@ -333,13 +347,19 @@ def privmsgResp(server,i):#the private msg(Normal message)
         if m is not False:
 
             #!--CTCP VERSION--!#
-            if "VERSION" in m.msg:
-                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 020809 Copyleft 2009 Mad Dog software")
+            if m.msg.startswith("VERSION"):
+                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 040809 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/")
             #!--CTCP VERSION END--!#
-            #!--CTCP TIME!#
-            if "TIME" in m.msg:
-                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 020809 Copyleft 2009 Mad Dog software")
-            #!--CTCP TIME END !#
+            #!--CTCP TIME--!#
+            if m.msg.startswith("TIME"):
+                IRCHelper.sendNotice(server,m.nick,strftime("%b %d %H:%M:%S %Z", localtime()))
+                #Aug 02 12:56:09 BST
+            #!--CTCP TIME END--!#
+            #!--CTCP PING--!#
+            if m.msg.startswith("PING"):
+                IRCHelper.sendNotice(server,m.nick,m.msg)
+                #PING 123456789
+            #!--CTCP PING END--!#
             
             #Call all the onPrivMsg events
             for event in IRC.eventFunctions:

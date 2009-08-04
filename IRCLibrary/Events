@@ -8,3 +8,5 @@ onPartMsg - When a user leaves a channel. - pResp(The parsed msg), cServer(The s
 onNoticeMsg - When a NOTICE is received. - pResp(The parsed msg), cServer(the server)
 onKickMsg - When a KICK is received(A person is kicked from a channel). - pResp(The parsed msg), cServer(The server).
 onNickChange - When a user changes it's NICK - pResp,cServer
+onModeChange - When a user changes someones MODE - pResp,cServer
+onUsersChange

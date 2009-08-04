@@ -32,7 +32,8 @@ def join(server,cChannel,listTreeStore):
     server.cSocket.send("JOIN " + cChannel + "\r\n")
 #sendMsg, Sends a PRIVMSG(message) to the channel specified.
 def sendMsg(server,cChannel,msg):
-    server.cSocket.send("PRIVMSG " + cChannel + " :" + msg + " \r\n") 
+    print "\033[1;34mPRIVMSG " + cChannel + " :" + msg + "\\r\\n\033[1;m"
+    server.cSocket.send("PRIVMSG " + cChannel + " :" + msg + "\r\n") 
 #sendNotice, Sends a NOTICE to the channel specified.
 def sendNotice(server,cChannel,msg):
     server.cSocket.send("NOTICE " + cChannel + " :" + msg + " \r\n") 
