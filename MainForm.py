@@ -22,9 +22,9 @@ listTreeStore = gtk.TreeStore(str,str)#For the list of servers,channels,users
 listTreeView = gtk.TreeView
 
 #Info
-serverAddr = "ikey.dynalias.com"
+serverAddr = "irc.archerseven.dynalias.com"
 channelName = "#freenode"
-port = 6667
+port = 6669
 nickname = "Nyx"
 
 servers = [] #List of Servers, server()
@@ -93,6 +93,7 @@ class MainForm:
         IRC.connectEvent("onKickMsg",self.onKickMsg,self.nServer)
         IRC.connectEvent("onNickChange",self.onNickChange,self.nServer)
         IRC.connectEvent("onModeChange",self.onModeChange,self.nServer)
+        IRC.connectEvent("onUsersChange",self.onUsersChange,self.nServer)
 
         #Start a new a connection to a server(Multi threaded)
         gtk.gdk.threads_enter()
@@ -446,9 +447,10 @@ class MainForm:
             #so i have to check if the person who QUIT is in any of the channels that i'm on, and notify the user on the correct channel.
             for ch in cServer.channels:
                 for user in ch.cUsers:
-                    print "\033[1;35mQUIT Message, Finding the channels \033[1;35m" + cResp.nick.lower() + "\033[1;m is on.(" + "Current user is " + user.cNick.lower() + ") Current Channel is " + ch.cName + "\033[1;m"
                     if cResp.nick.lower() == user.cNick.lower():
                         rChannel = ch
+
+                        print "Found channel: \033[1;35m" + rChannel.cName + "\033[1;m"
 
                         nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
                         timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey    
@@ -714,8 +716,138 @@ class MainForm:
             endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
             chatTextView.scroll_to_mark(endMark,0)
                             
+    """
+    onUsersChange
+    When the list of users are changed(When joining a channel
+    """
+    def onUsersChange(self,cChannel,cServer):
+
+        # * = Founder and ~ = Founder
+        # ! = Admin / Protected and & = Admin
+        # @ = Op
+        # % = HalfOp
+        # + = Voice
+                
+        #Clear the users in the treeview
+        itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
+        while itr:
+            cServer.listTreeStore.remove(itr)
+            itr = cServer.listTreeStore.iter_next(itr)
+
+        #Sort the users.
+        owners = []
+        for user in cChannel.cUsers:
+            if "*" in user.cMode or "~" in user.cMode:
+                print "Adding " + user.cNick + " to Founders(With mode",user.cMode + ")"
+                owners.append(user.cNick)
+        owners.sort(key=str.lower)              
+        admins = []
+        for user in cChannel.cUsers:
+            if "!" in user.cMode or "&" in user.cMode:
+                print "Adding",user.cNick,"to Admins(With mode",user.cMode + ")"
+                admins.append(user.cNick)
+        admins.sort(key=str.lower)
+        ops = []
+        for user in cChannel.cUsers:
+            if "@" in user.cMode:
+                print "Adding",user.cNick,"to OPs(With Mode",user.cMode + ")"
+                ops.append(user.cNick)
+        ops.sort(key=str.lower)
+        hops = []
+        for user in cChannel.cUsers:
+            if "%" in user.cMode:
+                print "Adding",user.cNick,"to HOPs"
+                hops.append(user.cNick)
+        hops.sort(key=str.lower)
+        vs = []
+        for user in cChannel.cUsers:
+            if "+" in user.cMode:
+                print "Adding",user.cNick,"to V"
+                vs.append(user.cNick)
+        vs.sort(key=str.lower)
+        others = []
+        for user in cChannel.cUsers:
+            if ("*" not in user.cMode and "!" not in user.cMode and "@" not in user.cMode and "%" not in user.cMode and
+ "+" not in user.cMode and "~" not in user.cMode and "&" not in user.cMode):
+                print "Adding",user.cNick,"to Others(With mode",user.cMode + ")"
+                others.append(user.cNick)
+        others.sort(key=str.lower)
+
+        self.register_iconsets([("founder", sys.path[0] + "/images/Founder.png"),("admin", sys.path[0] + "/images/Admin.png"),
+        ("op", sys.path[0] + "/images/op.png"),("hop", sys.path[0] + "/images/hop.png"),("voice", sys.path[0] + "/images/voice.png")])
+
+        print others,hops,ops,admins,owners
+        #Add the Owners, to the list of users.
+        for user in owners:
+            for cUsr in cChannel.cUsers:
+                if cUsr.cNick == user:
+                    if self.itrContainsString(cUsr.cNick,cServer.listTreeStore.iter_children(cChannel.cTreeIter),cServer.listTreeStore) == False:
+                        cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,self.lookupIcon("founder")])
+        #Add the admins, to the list of users
+        for user in admins:
+            for cUsr in cChannel.cUsers:
+                if cUsr.cNick == user:
+                    if self.itrContainsString(cUsr.cNick,cServer.listTreeStore.iter_children(cChannel.cTreeIter),cServer.listTreeStore) == False:
+                        cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,self.lookupIcon("admin")])
+        #Add the operators, to the list of users
+        for user in ops:
+            for cUsr in cChannel.cUsers:
+                if cUsr.cNick == user:
+                    if self.itrContainsString(cUsr.cNick,cServer.listTreeStore.iter_children(cChannel.cTreeIter),cServer.listTreeStore) == False:
+                        cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,self.lookupIcon("op")])
+        #Add the half operators, to the list of users
+        for user in hops:
+            for cUsr in cChannel.cUsers:
+                if cUsr.cNick == user:
+                    if self.itrContainsString(cUsr.cNick,cServer.listTreeStore.iter_children(cChannel.cTreeIter),cServer.listTreeStore) == False:
+                        cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,self.lookupIcon("hop")])  
+        #Add the voices, to the list of users
+        for user in vs:
+            for cUsr in cChannel.cUsers:
+                if cUsr.cNick == user:
+                    if self.itrContainsString(cUsr.cNick,cServer.listTreeStore.iter_children(cChannel.cTreeIter),cServer.listTreeStore) == False:
+                        cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,self.lookupIcon("voice")])
+        #Add the rest, to the list of users
+        for user in others:
+            for cUsr in cChannel.cUsers:
+                if cUsr.cNick == user:
+                    if self.itrContainsString(cUsr.cNick,cServer.listTreeStore.iter_children(cChannel.cTreeIter),cServer.listTreeStore) == False:
+                        cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,None])
+
+
+    def itrContainsString(self,string,itr,treestore):
+        try:
+            while itr:
+                if treestore.get_value(itr, 0) == string:
+                    return True
+                itr = treestore.iter_next(itr)
+
+            return False
+        except:
+            return True
+            traceback.print_exc()
+
+    def register_iconsets(self,icon_info):
+        iconfactory = gtk.IconFactory()
+        stock_ids = gtk.stock_list_ids()
+        for stock_id, file in icon_info:
+            # only load image files when our stock_id is not present
+            if stock_id not in stock_ids:
+                pixbuf = gtk.gdk.pixbuf_new_from_file(file)
+                iconset = gtk.IconSet(pixbuf)
+                iconfactory.add(stock_id, iconset)
+            iconfactory.add_default()
+
+    #Looks up an icon in the stock list
+    def lookupIcon(self,icon):
+        stock_ids = gtk.stock_list_ids()
+        for stock in stock_ids:
+            if stock == icon:
+                return stock
 
     #||IRC Events end||#
+    """---------------------------------------------"""
+
 
     #EntryBox Activated, Checks for any commands, like /j or /join.
     def entryBoxCheck(self,text,server):

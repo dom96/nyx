@@ -174,14 +174,14 @@ class server():
     cName="" #Name of this server.
     cSocket=socket.socket(socket.AF_INET, socket.SOCK_STREAM) #The socket being used by this server.
     cTextBuffer=gtk.TextBuffer() #The TextBuffer, with the server messages.
-    channels=[] #A tuple(List) of channel(), these are all of the channels currently connected on his server.
+    channels=[] #A List of channel(), these are all of the channels currently connected on his server.
     listTreeStore=gtk.TreeStore #The treestore, for easy access
 
 #A channel connection, on a server.
 class channel():
     cName="" #Name of this channel, e.g:#channel
     cTopic="" #The topic of this channel. e.g:"All ubuntu fans here|Obey the ops"
-    cUsers=[] #A tuple(list) of users(Class user()) in this channel.(Get's updated every nickchange, exit,part,join,modechange and i think that's it...)
+    cUsers=[] #A list of users(Class user()) in this channel.(Get's updated every nickchange, exit,part,join,modechange and i think that's it...)
     cTreeIter=gtk.TreeIter #The treeiter, for easy access of the channels iter.
     cTextBuffer=gtk.TextBuffer() #The TextBuffer, with all of the messages, said by users etc.
     
