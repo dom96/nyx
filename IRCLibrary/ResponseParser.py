@@ -75,7 +75,6 @@ def parseServer(data):
                 #Well it's actually used when there is no NOTICE AUTH in the message                
 
                 splitI = string.split(i) #Split the command with " "
-                #print splitI
                 if len(splitI) > 0:
                     hSplitI=0 #The position in the splitI where the message starts(-1)
                     try:
@@ -90,15 +89,16 @@ def parseServer(data):
 
                         if m.code in PongStuff.numericCode():
                             hSplitI=2
-                        
-                    except:#If there is an exception in the above code, try this without getting the server info(i think..)
+                    #If there is an exception in the above code, try this without getting the server info
+                    except:
                         traceback.print_exc()
                         m.code = splitI[0]
                         m.nick = splitI[1]
                         hSplitI=1
                 
                     count=0
-                    for i in splitI:#Add all the parts of the message, to the m.msg
+                    for i in splitI:
+                        #Add all the parts of the message, to the m.msg
                         if count > hSplitI:
                             m.msg = m.msg + " " + i
                         count=count+1
@@ -107,9 +107,6 @@ def parseServer(data):
         except:
             #traceback.print_exc()
             print "Error in parseServer. " + i
-    
-    #for i in mList:
-        #print i.msg    
 
 
     return mList
@@ -147,7 +144,7 @@ def parseMOTD(data):
     return mList
 
 #Parses PRIVMSG
-def parseMsg(data):
+def parseMsg(data,noUnicode):
     #:ikey!~hserver@my.fancy.host PRIVMSG vIRC :VERSION
     try:
     # :dom96!~dom96@SpotChat-12E750B3.range86-131.btcentralplus.com PRIVMSG #geek :k
@@ -173,13 +170,17 @@ def parseMsg(data):
         for i in range(len(splitMsg)):
             if i > msgInt:
                 if i != msgInt+1:
-                    m.msg += unicode(splitMsg[i], 'utf-8') + " "
+                    if noUnicode != True:
+                        m.msg += unicode(splitMsg[i], 'utf-8') + " "
+                    else:                    
+                        m.msg += splitMsg[i] + " "
                 elif i == msgInt+1 and splitMsg[i].startswith(":"):
-                    m.msg += unicode(splitMsg[i][1:], 'utf-8') + " "
-        
-        m.msg = m.msg[:-1]
+                    if noUnicode != True:
+                        m.msg += unicode(splitMsg[i][1:], 'utf-8') + " "
+                    else:                        
+                        m.msg += splitMsg[i][1:] + " "
 
-        #print "In parsePrivMsg " + m.msg
+        m.msg = m.msg[:-1]
     
     except:
         print "Error in parseMsg"
@@ -257,17 +258,13 @@ def parseKick(data):
         m.typeMsg = string.strip(splitMsg[1],":")
         m.channel = string.strip(splitMsg[2],":").replace(" ","")
         m.nick += "," + splitMsg[3]
-        
-          
 
         for i in range(len(splitMsg)):
             if i > msgInt:
                 if i != msgInt+1:
-                    m.msg += unicode(splitMsg[i], 'iso8859_2') + " "
+                    m.msg += unicode(splitMsg[i], 'utf-8') + " "
                 elif i == msgInt+1 and splitMsg[i].startswith(":"):
-                    m.msg += unicode(splitMsg[i][1:], 'iso8859_2') + " "
-
-
+                    m.msg += unicode(splitMsg[i][1:], 'utf-8') + " "
     
     except:
         traceback.print_exc()
@@ -302,7 +299,7 @@ def parseMode(data):
         for i in range(len(splitMsg)):
             if i > msgInt:
                 if i != msgInt:
-                    m.msg += unicode(splitMsg[i], 'iso8859_2') + " "
+                    m.msg += unicode(splitMsg[i], 'utf-8') + " "
         
         m.msg = m.msg[:-1]
     except:

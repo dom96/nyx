@@ -47,6 +47,67 @@ def modeResp(server,i):
                 for event in IRC.eventFunctions:
                     if event.eventName == "onModeChange" and event.cServer == server:
                         gobject.idle_add(event.aFunc,m,server)
+                try:
+                    nM = mLetters(m.msg.split()[0])
+                    print nM
+
+                    #Find the cTreeIter
+                    for ch in server.channels:
+                        if ch.cName.lower() == m.channel.lower():
+                            for usr in ch.cUsers:
+                                if usr.cNick.lower() == m.msg.split()[1].lower():
+                                    print usr.cTreeIter
+                                    cTreeIter = usr.cTreeIter
+                                    for event in IRC.eventFunctions:
+                                        if event.eventName == "onUserRemove" and event.cServer == server:
+                                            gobject.idle_add(event.aFunc,ch,server,cTreeIter)
+
+                    for ch in server.channels:
+                        if ch.cName.lower() == m.channel.lower():
+                            for usr in ch.cUsers:
+                                if usr.cNick.lower() == m.msg.split()[1].lower():
+                                    print usr.cMode
+                                    #Set the new MODE for the user.
+                                    if nM.startswith("-"):
+                                        for char in nM.replace("-",""):
+                                            usr.cMode = usr.cMode.replace(char,"")
+                                        print "usr.cMode = " + usr.cMode
+                                    else:
+                                        usr.cMode += nM
+
+                                    cIndex = findIndex(usr,server,ch)
+                                        
+                                    for event in IRC.eventFunctions:
+                                        if event.eventName == "onUserJoin" and event.cServer == server:
+                                            gobject.idle_add(event.aFunc,ch,server,cIndex,usr)
+                except:
+                    traceback.print_exc()
+
+
+def mLetters(mode):
+    #+q = Founder
+    #+a = Admin
+    #+o = op
+    #+h = hop
+    #+v = voice
+
+    if mode.startswith("+"):
+        nM=mode.replace("+","")
+        nM=nM.replace("q","*")
+        nM=nM.replace("a","!")
+        nM=nM.replace("o","@")
+        nM=nM.replace("h","%")
+        nM=nM.replace("v","+")
+    else:
+        #If it's - then leave it there so
+        #we can delete the mode.
+        nM=mode.replace("q","*~")
+        nM=nM.replace("a","!&")
+        nM=nM.replace("o","@")
+        nM=nM.replace("h","%")
+        nM=nM.replace("v","+")
+
+    return nM
 
 #!--MODE CHANGE END--!#
 #!--servResp Stuff--!#
@@ -87,12 +148,12 @@ def numericCode():
 
 def nickResp(server,i):
     if "NICK" in i:
-        m = ResponseParser.parseMsg(i)
+        m = ResponseParser.parseMsg(i,True)
         if m is not False:
             if m.typeMsg == "NICK":
                 #If the person who changed their nick is you, change the nick in the server.
                 if m.nick == server.cNick:
-                    server.cNick = m.msg
+                    server.cNick = str(m.msg)
 
                 print "NICK----"
                 for event in IRC.eventFunctions:
@@ -109,16 +170,31 @@ def kickResp(server,i):
                     if event.eventName == "onKickMsg" and event.cServer == server:
                         gobject.idle_add(event.aFunc,m,server)
 
+                try:
+                    #Delete the user from the list of users.
+                    for ch in server.channels:
+                        for usr in ch.cUsers:
+                            if usr.cNick.lower()==m.nick.split(",")[1].lower():
+                                print usr.cNick.lower()
+                                cTreeIter = usr.cTreeIter
+                                ch.cUsers.remove(usr)
+
+                                #Call the onUserRemove event
+                                for event in IRC.eventFunctions:
+                                    if event.eventName == "onUserRemove" and event.cServer == server:
+                                        gobject.idle_add(event.aFunc,ch,server,cTreeIter)
+                except:
+                    traceback.print_exc()
+
 
 def noticeResp(server,i):
     if "NOTICE" in i:
-        m = ResponseParser.parseMsg(i)
+        m = ResponseParser.parseMsg(i,False)
         if m is not False:
             if m.typeMsg == "NOTICE":
                 for event in IRC.eventFunctions:
                     if event.eventName == "onNoticeMsg" and event.cServer == server:
                         gobject.idle_add(event.aFunc,m,server)
-                        #event.aFunc(m,server)
 
 
 def userStuff(server,i):#The user list.
@@ -153,6 +229,8 @@ or userF.startswith("+") or userF.startswith("~") or userF.startswith("&")):
                 for us in channel.cUsers:                
                     print "\033[1;32m" + us.cNick + "(Mode " + us.cMode + ")" + "\033[1;m"
 
+                USERS = ""
+
                 for event in IRC.eventFunctions:
                     if event.eventName == "onUsersChange" and event.cServer == server:
                         event.aFunc(channel,server)
@@ -164,7 +242,7 @@ or userF.startswith("+") or userF.startswith("~") or userF.startswith("&")):
 def quitResp(server,i):#The quit message
     #!--QUIT MSG--!#
     if "QUIT" in i:
-        m = ResponseParser.parseMsg(i)
+        m = ResponseParser.parseMsg(i,False)
         if m is not False:
             #Make sure it's a QUIT msg.
             if m.typeMsg == "QUIT":
@@ -176,12 +254,13 @@ def quitResp(server,i):#The quit message
                 for ch in server.channels:
                     for usr in ch.cUsers:
                         if usr.cNick.lower()==m.nick.lower():
+                            cTreeIter = usr.cTreeIter
                             ch.cUsers.remove(usr)
 
-                            #Call the onUsersChange event
+                            #Call the onUserRemove event
                             for event in IRC.eventFunctions:
-                                if event.eventName == "onUsersChange" and event.cServer == server:
-                                    gobject.idle_add(event.aFunc,ch,server)
+                                if event.eventName == "onUserRemove" and event.cServer == server:
+                                    gobject.idle_add(event.aFunc,ch,server,cTreeIter)
 
     #!--QUIT MSG END--!#
 
@@ -189,7 +268,7 @@ def joinResp(server,i):#The join message
     global USERS
     #!--JOIN MSG--!#
     if "JOIN" in i:
-        m = ResponseParser.parseMsg(i)
+        m = ResponseParser.parseMsg(i,False)
         if m is not False:
             #Make sure it's a JOIN msg.
             if m.typeMsg == "JOIN":
@@ -208,17 +287,21 @@ def joinResp(server,i):#The join message
                         #Add the newly JOINed channel to the Servers channel list
                         server.channels.append(nChannel)
                 else:
-                    #Add the user who joined to the list of users
+                    #Add the user who JOINed to the list of users
                     for ch in server.channels:
                         if ch.cName == m.channel:
                             usr=IRC.user()
                             usr.cNick=m.nick
                             ch.cUsers.append(usr)
+                            try:
+                                cIndex=findIndex(usr,server,ch)
+                            except:
+                                traceback.print_exc()
 
                             #Call the onUsersChange event
                             for event in IRC.eventFunctions:
-                                if event.eventName == "onUsersChange" and event.cServer == server:
-                                    gobject.idle_add(event.aFunc,ch,server)
+                                if event.eventName == "onUserJoin" and event.cServer == server:
+                                    gobject.idle_add(event.aFunc,ch,server,cIndex,usr)
 
                 for event in IRC.eventFunctions:
                     if event.eventName == "onJoinMsg" and event.cServer == server:
@@ -226,11 +309,139 @@ def joinResp(server,i):#The join message
 
                 
 
+
     #!--JOIN MSG END--!#
+#!--FOR JOIN(And MODE) MSG, finds the index of where to insert the new user.--!#
+def findIndex(usr,cServer,cChannel):
+    if usr.cMode != "":
+        print usr.cMode
+        #1.Check what mode the user contains.
+        cISet=False
+        fUsers=[] #Founder Users
+        #Loop through the users.
+        itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
+        while itr:
+            if cServer.listTreeStore.get_value(itr, 1) == lookupIcon("founder"):
+                fUsers.append(cServer.listTreeStore.get_value(itr,0))
+            itr = cServer.listTreeStore.iter_next(itr)
+        #Add the user to the list of users.
+        if "*" in usr.cMode:
+            fUsers.append(usr.cNick)
+        #Sort the list
+        fUsers.sort(key=str.lower)
+        #Find the index of where the user that JOINed is.
+        if "*" in usr.cMode:
+            cIndex = fUsers.index(usr.cNick)
+            cISet=True
+        
+        aUsers=[] #Admin Users
+        #Loop through the users.
+        itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
+        while itr:
+            if cServer.listTreeStore.get_value(itr, 1) == lookupIcon("admin"):
+                aUsers.append(cServer.listTreeStore.get_value(itr,0))
+            itr = cServer.listTreeStore.iter_next(itr)
+        #Add the user to the list of users.
+        if "!" in usr.cMode and cISet==False:
+            aUsers.append(usr.cNick)
+        #Sort the list
+        aUsers.sort(key=str.lower)
+        #Find the index of where the user that JOINed is.
+        if "!" in usr.cMode and cISet==False:
+            cIndex = aUsers.index(usr.cNick) + len(fUsers)
+            cISet=True
+
+        oUsers=[] #Operator Users
+        #Loop through the users.
+        itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
+        while itr:
+            if cServer.listTreeStore.get_value(itr, 1) == lookupIcon("op"):
+                oUsers.append(cServer.listTreeStore.get_value(itr,0))
+            itr = cServer.listTreeStore.iter_next(itr)
+        #Add the user to the list of users.
+        if "@" in usr.cMode and cISet==False:
+            oUsers.append(usr.cNick)
+        #Sort the list
+        oUsers.sort(key=str.lower)
+        #Find the index of where the user that JOINed is.
+        if "@" in usr.cMode and cISet==False:
+            print len(fUsers) + len(aUsers)
+            cIndex = oUsers.index(usr.cNick) + len(fUsers) + len(aUsers)
+            cISet=True
+
+        
+        hUsers=[] #Half operator Users
+        #Loop through the users.
+        itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
+        while itr:
+            if cServer.listTreeStore.get_value(itr, 1) == lookupIcon("hop"):
+                hUsers.append(cServer.listTreeStore.get_value(itr,0))
+            itr = cServer.listTreeStore.iter_next(itr)
+        #Add the user to the list of users.
+        if "%" in usr.cMode and cISet==False:
+            hUsers.append(usr.cNick)
+        #Sort the list
+        hUsers.sort(key=str.lower)
+        #Find the index of where the user that JOINed is.
+        if "%" in usr.cMode and cISet==False:
+            cIndex = hUsers.index(usr.cNick) + len(fUsers) + len(aUsers) + len(oUsers)
+            cISet=True
+        
+        vUsers=[] #voice Users
+        #Loop through the users.
+        itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
+        while itr:
+            if cServer.listTreeStore.get_value(itr, 1) == lookupIcon("voice"):
+                vUsers.append(cServer.listTreeStore.get_value(itr,0))
+            itr = cServer.listTreeStore.iter_next(itr)
+        #Add the user to the list of users.
+        if "+" in usr.cMode and cISet==False:
+            vUsers.append(usr.cNick)
+        #Sort the list
+        vUsers.sort(key=str.lower)
+        #Find the index of where the user that JOINed is.
+        if "+" in usr.cMode and cISet==False:
+            cIndex = vUsers.index(usr.cNick) + len(fUsers) + len(aUsers) + len(oUsers) + len(hUsers)
+            cISet=True
+
+        #return the index
+        return cIndex
+        
+        
+    else:
+        #1.Add the normal users, to a list. And the users with modes, to uNormUsers
+        uNormUsrInt = 0
+        normUsers=[]
+        itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
+        while itr:
+            if cServer.listTreeStore.get_value(itr, 1) == None:
+                normUsers.append(cServer.listTreeStore.get_value(itr,0))
+            else:
+                uNormUsrInt+=1
+            itr = cServer.listTreeStore.iter_next(itr)
+        #These should already be sorted alphabetically        
+        #2.Add the user who JOINed, to the list.
+        normUsers.append(usr.cNick)
+        print usr.cNick
+        #3.Sort the list
+        normUsers.sort(key=str.lower)
+        #4.Find the index of where the nick that JOINed is.
+        cIndex = normUsers.index(usr.cNick) + uNormUsrInt
+        #5.Return the index.
+        return cIndex
+
+#Looks up an icon in the stock list
+def lookupIcon(icon):
+    stock_ids = gtk.stock_list_ids()
+    for stock in stock_ids:
+        if stock == icon:
+            return stock
+#!--FOR JOIN MSG END--!#
+
 def partResp(server,i):#The part message
     #!--PART MSG--!#
     if "PART" in i:
-        m = ResponseParser.parseMsg(i)
+        m = ResponseParser.parseMsg(i,False)
         if m is not False:
             #Make sure it's a PART msg.
             if m.typeMsg == "PART":
@@ -243,23 +454,24 @@ def partResp(server,i):#The part message
                     if ch.cName.lower() == m.channel.lower():
                         for usr in ch.cUsers:
                             if usr.cNick.lower()==m.nick.lower():
+                                cTreeIter = usr.cTreeIter #The TreeIter in the TreeStore to remove.
                                 ch.cUsers.remove(usr)
 
-                                #Call the onUsersChange event
+                                #Call the onUserRemove event, which will remove the user from the TreeStore
                                 for event in IRC.eventFunctions:
-                                    if event.eventName == "onUsersChange" and event.cServer == server:
-                                        gobject.idle_add(event.aFunc,ch,server)
+                                    if event.eventName == "onUserRemove" and event.cServer == server:
+                                        gobject.idle_add(event.aFunc,ch,server,cTreeIter)
 
     #!--PART MSG END--!#
 def privmsgResp(server,i):#the private msg(Normal message)
     #!--PRIVMSG STUFF START--!#
     if "PRIVMSG" in i:
-        m = ResponseParser.parseMsg(i)
+        m = ResponseParser.parseMsg(i,False)
         if m is not False:
 
             #!--CTCP VERSION--!#
             if m.msg.startswith("VERSION"):
-                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 040809 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/")
+                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 080809 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/")
             #!--CTCP VERSION END--!#
             #!--CTCP TIME--!#
             if m.msg.startswith("TIME"):

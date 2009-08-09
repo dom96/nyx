@@ -1,4 +1,4 @@
-!---vIRC Library Events--!
+!---Nyx Library Events--!
 onServerMsg - Welcome messages etc. - pResp(A tuple of serverMsg(class)), cServer(The server)
 onMotdMsg - After connection to the server is made, the server sends a MOTD that server is activated then. - pResp(The motd message, a tuple of ServerMsg()), cServer(The server)
 onPrivMsg - When a user on the channel sends a message(Or a private message to you). - pResp(The parsed PrivMsg), cServer(The server)
@@ -9,4 +9,6 @@ onNoticeMsg - When a NOTICE is received. - pResp(The parsed msg), cServer(the se
 onKickMsg - When a KICK is received(A person is kicked from a channel). - pResp(The parsed msg), cServer(The server).
 onNickChange - When a user changes it's NICK - pResp,cServer
 onModeChange - When a user changes someones MODE - pResp,cServer
-onUsersChange
+onUsersChange - After a channel is joined - cChannel,cServer
+onUserJoin - When a user joins a channel, provides the user ,the index(so it's ordered alphabetically) of where to add the user and the cUsr - cChannel,cServer,cIndex,cUsr
+onUserRemove - When a user either QUIT's or PART's(from a channel), provides the user and the TreeIter of the TreeIter to remove from the TreeStore - cChannel,cServer,cTreeIter

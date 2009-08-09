@@ -159,9 +159,9 @@ def pingPong(server):
 
                             #Reset the msg after parsing
                             msg=""
-    
         except:
-            traceback.print_exc()   
+            pass
+            #traceback.print_exc()   
 
 
 

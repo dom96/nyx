@@ -60,8 +60,7 @@ class MainForm:
         self.w.connect("delete_event",self.delete_event)
         self.w.set_default_size(750,450)
         
-
-        #Set up the server, which is connected to at startup of Nyx.
+        #Set up the server, which is connected to at startup in Nyx.
         self.nServer = IRC.server()        
         self.nServer.cAddress = serverAddr
         self.nServer.Nick = nickname
@@ -94,6 +93,8 @@ class MainForm:
         IRC.connectEvent("onNickChange",self.onNickChange,self.nServer)
         IRC.connectEvent("onModeChange",self.onModeChange,self.nServer)
         IRC.connectEvent("onUsersChange",self.onUsersChange,self.nServer)
+        IRC.connectEvent("onUserJoin",self.onUserJoin,self.nServer)
+        IRC.connectEvent("onUserRemove",self.onUserRemove,self.nServer)
 
         #Start a new a connection to a server(Multi threaded)
         gtk.gdk.threads_enter()
@@ -492,6 +493,13 @@ class MainForm:
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," <--" + " ",nickTag)
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick + " has left " + cResp.channel + " (" + cResp.msg + ")" + "\n",partTag)
 
+        if cResp.nick == cServer.cNick:
+            for usr in rChannel.cUsers:
+                cServer.listTreeStore.remove(usr.cTreeIter)
+            
+            rChannel.cUsers = []
+
+
         #Get the selected iter
         model, selected = listTreeView.get_selection().get_selected()
         newlySelected = listTreeStore.get_value(selected, 0)
@@ -574,7 +582,6 @@ class MainForm:
         timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey    
         highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=highlightTagColor)#Green
     
-        print cResp.msg
         personWhoKicked = cResp.nick.split(",")[0]
         personWhoWasKicked = cResp.nick.split(",")[1]
 
@@ -844,6 +851,43 @@ class MainForm:
         for stock in stock_ids:
             if stock == icon:
                 return stock
+
+    """
+    onUserJoin
+    When a user joins a channel, provides the user and the index of where to add the user
+    """
+    def onUserJoin(self,cChannel,cServer,cIndex,cUsr):
+        if cUsr.cMode == "":
+            cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,None])
+        else:
+            print "onUserJoin, " + cUsr.cMode
+            if "*" in cUsr.cMode or "~" in cUsr.cMode:
+                print "*",cIndex
+                cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("founder")])
+                return
+            elif "!" in cUsr.cMode or "&" in cUsr.cMode:
+                cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("admin")])
+                return
+            elif "@" in cUsr.cMode:
+                cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("op")])
+                return
+            elif "%" in cUsr.cMode:
+                cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("hop")])
+                return
+            elif "+" in cUsr.cMode:
+                cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("voice")])
+                return
+
+
+    """
+    onUserRemove
+    When a user either QUIT's ,PART's(from a channel) or is KICKed, provides the user and the index of where to add the user
+    """
+    def onUserRemove(self,cChannel,cServer,cTreeIter):
+        print "onUserRemove"
+        print cChannel.cName
+        cServer.listTreeStore.remove(cTreeIter)
+
 
     #||IRC Events end||#
     """---------------------------------------------"""
