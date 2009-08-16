@@ -98,6 +98,10 @@ def connect(address, nick, realname,port,server):
     server.cName = address
 
 
+    gtk.gdk.threads_enter()
+    thread.start_new(pingServer,(server,))
+    gtk.gdk.threads_leave()
+
 def pingPong(server):
     MOTDStarted = False
     MOTD=""
@@ -156,6 +160,9 @@ def pingPong(server):
                             #!--MODE MSG--!#
                             PongStuff.modeResp(server,i)
                             #!--MODE MSG END--!#
+                            #!--PING MSG--!#
+                            PongStuff.pongResp(server,i)
+                            #!--PING MSG END--!#
 
                             #Reset the msg after parsing
                             msg=""
@@ -163,7 +170,11 @@ def pingPong(server):
             pass
             #traceback.print_exc()   
 
-
+def pingServer(server):
+    while(True):
+        import time
+        server.cSocket.send("PING LAG" + str(time.time()) + "\r\n")
+        time.sleep(15)
 
 #A connection to a server
 class server():

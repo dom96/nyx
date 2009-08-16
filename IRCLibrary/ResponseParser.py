@@ -80,7 +80,7 @@ def parseServer(data):
                     try:
                         m.server = splitI[0] #The server, next.spotchat.org
                         m.code = splitI[1] #The code, 001
-                        m.nick = splitI[2] #The nick, usually your own nick, vIRC
+                        m.nick = splitI[2] #The nick, usually your own nick, Nyx
                         try:
                             m.channel = splitI[3]
                             hSplitI=3

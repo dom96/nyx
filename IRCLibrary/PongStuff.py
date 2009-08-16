@@ -37,6 +37,20 @@ USERS = ""
 MOTDStarted = False
 MOTD = ""
 
+def pongResp(server,i):
+    #:irc.archerseven.com PONG irc.archerseven.com :LAG1250452847.82
+    try:
+        if "PONG":
+            m=i.split(" ")
+            if m[1]=="PONG":
+                print "..after"
+                for event in IRC.eventFunctions:
+                    if event.eventName == "onLagChange" and event.cServer == server:
+                        gobject.idle_add(event.aFunc,m,server)
+    except:
+        pass
+
+
 #!--MODE CHANGE--!#
 def modeResp(server,i):
     #:ChanServ!services@ArcherNet.net MODE ## +o Nyx1

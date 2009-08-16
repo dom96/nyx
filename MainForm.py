@@ -22,9 +22,9 @@ listTreeStore = gtk.TreeStore(str,str)#For the list of servers,channels,users
 listTreeView = gtk.TreeView
 
 #Info
-serverAddr = "irc.archerseven.dynalias.com"
+serverAddr = "ikey.dynalias.com"
 channelName = "#freenode"
-port = 6669
+port = 6667
 nickname = "Nyx"
 
 servers = [] #List of Servers, server()
@@ -58,6 +58,9 @@ class MainForm:
         self.w = gtk.Window(gtk.WINDOW_TOPLEVEL)
         self.w.set_title("Nyx 0.1 Alpha")
         self.w.connect("delete_event",self.delete_event)
+        self.w.connect("map-event",self.window_focus)
+        self.w.connect("focus-in-event",self.window_focus)
+
         self.w.set_default_size(750,450)
         
         #Set up the server, which is connected to at startup in Nyx.
@@ -95,6 +98,7 @@ class MainForm:
         IRC.connectEvent("onUsersChange",self.onUsersChange,self.nServer)
         IRC.connectEvent("onUserJoin",self.onUserJoin,self.nServer)
         IRC.connectEvent("onUserRemove",self.onUserRemove,self.nServer)
+        IRC.connectEvent("onLagChange",self.onLagChange,self.nServer)        
 
         #Start a new a connection to a server(Multi threaded)
         gtk.gdk.threads_enter()
@@ -107,6 +111,10 @@ class MainForm:
         gtk.main_quit()
         return False
 
+    def window_focus(self,widget,event):
+        print "FOCUS"
+        widget.set_urgency_hint(False)
+
 
     def setupForm(self,w):
         global chatTextBuffer
@@ -114,16 +122,34 @@ class MainForm:
         global listTreeStore
         global listTreeView
         global serverAddr
+
+        #The Nyx item in the menu
+        self.nyx_menu = gtk.MenuItem("_Nyx")
+        self.nyx_menu.show()
+        """----------------------------------"""
+        #The View item in the menu
+        self.view_menu = gtk.MenuItem("_View")
+        self.view_menu.show()
+        """----------------------------------"""
+        #The Server item in the menu
+        self.server_menu = gtk.MenuItem("_Server")
+        self.server_menu.show()
+        """----------------------------------"""
+        #The Tools item in the menu
+        self.tools_menu = gtk.MenuItem("_Tools")
+        self.tools_menu.show()
+        """----------------------------------"""
         #The About item in the help item
-        self.menu = gtk.Menu()    
-        self.menu_item = gtk.ImageMenuItem(gtk.STOCK_ABOUT,"About")    
-        self.menu.append(self.menu_item)
-        self.menu_item.show()
+        self.about_menu = gtk.Menu()    
+        self.about_menu_item = gtk.ImageMenuItem(gtk.STOCK_ABOUT,"About")    
+        self.about_menu.append(self.about_menu_item)
+        self.about_menu_item.show()
 
         #The help item in the menu
-        self.help_menu = gtk.MenuItem("Help")
+        self.help_menu = gtk.MenuItem("_Help")
         self.help_menu.show()
-        self.help_menu.set_submenu(self.menu)
+        self.help_menu.set_submenu(self.about_menu)
+        """----------------------------------"""
 
         #VBox for the Menu
         self.MenuVBox = gtk.VBox()
@@ -134,7 +160,11 @@ class MainForm:
         self.menu_bar = gtk.MenuBar()
         self.MenuVBox.pack_start(self.menu_bar, False, False, 0)
         self.menu_bar.show()
-        #Add the Help item into the menu
+        #Add all the menu's to the menu :P
+        self.menu_bar.append(self.nyx_menu)
+        self.menu_bar.append(self.view_menu)
+        self.menu_bar.append(self.server_menu)
+        self.menu_bar.append(self.tools_menu)
         self.menu_bar.append(self.help_menu)
 
         #HPaned - The split panel
@@ -142,13 +172,19 @@ class MainForm:
         self.MenuVBox.pack_end(self.HPaned1)
         self.HPaned1.show()
     
+        #TreeBox - For the TreeView and Ping meter
+        self.TreeVBox = gtk.VBox()
+        self.HPaned1.add(self.TreeVBox)
+        self.TreeVBox.show()
+
         #TreeView - Treeview for the channels and servers(like in xchat lol :P) 
         
         self.treeScrolledWindow = gtk.ScrolledWindow()
         self.treeScrolledWindow.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
-        self.HPaned1.add(self.treeScrolledWindow)
+        self.TreeVBox.pack_start(self.treeScrolledWindow)
 
         self.TreeView1 = gtk.TreeView(listTreeStore)
+        #Border..
         self.treeScrolledWindow.set_shadow_type(gtk.SHADOW_IN)      
 
         self.treeScrolledWindow.add(self.TreeView1)
@@ -163,7 +199,7 @@ class MainForm:
 
         serverTreeIter = listTreeStore.append(None,[serverAddr, gtk.STOCK_NETWORK])
 
-        #Select that row^^        
+        #Select that row ^^^        
         self.selection = self.TreeView1.get_selection()
         self.selection.select_iter(serverTreeIter)
         
@@ -187,6 +223,11 @@ class MainForm:
         selection = self.TreeView1.get_selection()
         selection.connect('changed', self.TreeView_OnSelectionChanged)
 
+        #PING measure
+        self.pingLabel = gtk.Label("PING")
+        self.TreeVBox.pack_start(self.pingLabel,False,False,5)
+        self.pingLabel.show()
+
         #HBox - For the TextView and EntryBox
         self.VBox1 = gtk.VBox()
         self.HPaned1.add(self.VBox1)
@@ -196,6 +237,8 @@ class MainForm:
         self.chatScrolledWindow.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
         self.VBox1.pack_start(self.chatScrolledWindow)
         self.chatScrolledWindow.show()
+
+
         #TextView - For the actual chat...
         self.chatTextView = gtk.TextView()
         self.chatTextView.set_buffer(servers[0].cTextBuffer)
@@ -214,7 +257,7 @@ class MainForm:
         self.chatScrolledWindow.add(self.chatTextView)
         self.chatTextView.show()
         chatTextView = self.chatTextView
-        #EntryBox - For actually speaking
+        #EntryBox - For the speaking part
         self.chatEntry = gtk.Entry()
         self.VBox1.pack_end(self.chatEntry,False,False,5)
         self.chatEntry.connect("activate",self.chatEntry_Activate)
@@ -365,7 +408,7 @@ class MainForm:
             msgTag = rChannel.cTextBuffer.create_tag(None)
             if cServer.cNick.lower() in cResp.msg.lower():
                 msgTag.set_property("foreground-gdk",highlightTagColor)
-
+                self.w.set_urgency_hint(True)
 
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.msg + "\n",msgTag)
 
@@ -887,6 +930,18 @@ class MainForm:
         print "onUserRemove"
         print cChannel.cName
         cServer.listTreeStore.remove(cTreeIter)
+    """
+    onLagChange
+    When a PONG message is received with the timestamp(LAG1234567890.0)
+    """
+    def onLagChange(self,cResp,cServer):
+        lag=cResp[3].replace(":LAG","").replace("\r","")
+        import time
+        print str(time.time()) + " " + lag
+        lagInt=time.time() - float(lag)
+        print "onLagChange " + cResp[3] + " lag = " + str(lagInt)
+        self.pingLabel.set_text(str(lagInt))
+
 
 
     #||IRC Events end||#
@@ -937,6 +992,20 @@ class MainForm:
                 IRCHelper.sendMsg(server,to,"\x01" + ctcp + "\x01")
             except:
                 pass
+            return True
+
+        if text.startswith("/me"):
+            from IRCLibrary import ResponseParser
+            fakecResp=ResponseParser.privMsg()
+            fakecResp.msg="ACTION " + text.replace("/me ","") + ""
+            fakecResp.nick=server.cNick
+            #Get the selected channel
+            model, selected = listTreeView.get_selection().get_selected()
+            cSelected = listTreeStore.get_value(selected, 0)            
+            fakecResp.channel=cSelected
+
+            self.onPrivMsg(fakecResp,server)
+            IRCHelper.sendMsg(server,cSelected,"ACTION " + text.replace("/me ","") + "")
             return True
 
         return False
