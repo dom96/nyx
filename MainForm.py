@@ -929,7 +929,11 @@ class MainForm:
     def onUserRemove(self,cChannel,cServer,cTreeIter):
         print "onUserRemove"
         print cChannel.cName
-        cServer.listTreeStore.remove(cTreeIter)
+        try:
+            cServer.listTreeStore.remove(cTreeIter)
+        except:
+            print "Error removing user, onUserRemove"
+
     """
     onLagChange
     When a PONG message is received with the timestamp(LAG1234567890.0)
@@ -997,7 +1001,7 @@ class MainForm:
         if text.startswith("/me"):
             from IRCLibrary import ResponseParser
             fakecResp=ResponseParser.privMsg()
-            fakecResp.msg="ACTION " + text.replace("/me ","") + ""
+            fakecResp.msg="ACTION " + text[4:] + ""
             fakecResp.nick=server.cNick
             #Get the selected channel
             model, selected = listTreeView.get_selection().get_selected()
@@ -1005,7 +1009,7 @@ class MainForm:
             fakecResp.channel=cSelected
 
             self.onPrivMsg(fakecResp,server)
-            IRCHelper.sendMsg(server,cSelected,"ACTION " + text.replace("/me ","") + "")
+            IRCHelper.sendMsg(server,cSelected,"ACTION " + text[4:] + "")
             return True
 
         return False

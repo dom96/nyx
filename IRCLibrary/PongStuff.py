@@ -485,7 +485,7 @@ def privmsgResp(server,i):#the private msg(Normal message)
 
             #!--CTCP VERSION--!#
             if m.msg.startswith("VERSION"):
-                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 080809 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/")
+                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 170809 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/")
             #!--CTCP VERSION END--!#
             #!--CTCP TIME--!#
             if m.msg.startswith("TIME"):
