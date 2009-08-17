@@ -74,7 +74,7 @@ def modeResp(server,i):
                                     cTreeIter = usr.cTreeIter
                                     for event in IRC.eventFunctions:
                                         if event.eventName == "onUserRemove" and event.cServer == server:
-                                            gobject.idle_add(event.aFunc,ch,server,cTreeIter)
+                                            gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
 
                     for ch in server.channels:
                         if ch.cName.lower() == m.channel.lower():
@@ -196,7 +196,7 @@ def kickResp(server,i):
                                 #Call the onUserRemove event
                                 for event in IRC.eventFunctions:
                                     if event.eventName == "onUserRemove" and event.cServer == server:
-                                        gobject.idle_add(event.aFunc,ch,server,cTreeIter)
+                                        gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
                 except:
                     traceback.print_exc()
 
@@ -474,7 +474,7 @@ def partResp(server,i):#The part message
                                 #Call the onUserRemove event, which will remove the user from the TreeStore
                                 for event in IRC.eventFunctions:
                                     if event.eventName == "onUserRemove" and event.cServer == server:
-                                        gobject.idle_add(event.aFunc,ch,server,cTreeIter)
+                                        gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
 
     #!--PART MSG END--!#
 def privmsgResp(server,i):#the private msg(Normal message)

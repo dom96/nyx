@@ -928,11 +928,15 @@ class MainForm:
     def onUserRemove(self,cChannel,cServer,cTreeIter,usr):
         print "onUserRemove"
         print cChannel.cName
-        cChannel.cUsers.remove(usr)
+        try:
+            cChannel.cUsers.remove(usr)
+        except:
+            print "An error occured while trying to remove user from the user list, received",usr ," onUserRemove"
+
         try:
             cServer.listTreeStore.remove(cTreeIter)
         except:
-            print "Error removing user, onUserRemove"
+            print "Error removing user from TreeStore, onUserRemove"
 
     """
     onLagChange
