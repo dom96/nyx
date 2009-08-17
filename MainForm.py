@@ -469,7 +469,6 @@ class MainForm:
         for ch in cServer.channels:
             if ch.cName.lower() == cResp.msg.lower():
                 rChannel = ch
-
         try:
             nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
             timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey    
@@ -924,11 +923,12 @@ class MainForm:
 
     """
     onUserRemove
-    When a user either QUIT's ,PART's(from a channel) or is KICKed, provides the user and the index of where to add the user
+    When a user either QUIT's ,PART's(from a channel) or is KICKed, provides the iter to remove
     """
-    def onUserRemove(self,cChannel,cServer,cTreeIter):
+    def onUserRemove(self,cChannel,cServer,cTreeIter,usr):
         print "onUserRemove"
         print cChannel.cName
+        cChannel.cUsers.remove(usr)
         try:
             cServer.listTreeStore.remove(cTreeIter)
         except:

@@ -269,12 +269,12 @@ def quitResp(server,i):#The quit message
                     for usr in ch.cUsers:
                         if usr.cNick.lower()==m.nick.lower():
                             cTreeIter = usr.cTreeIter
-                            ch.cUsers.remove(usr)
+                            #The user is removed from the userlist in the onUserRemove event
 
                             #Call the onUserRemove event
                             for event in IRC.eventFunctions:
                                 if event.eventName == "onUserRemove" and event.cServer == server:
-                                    gobject.idle_add(event.aFunc,ch,server,cTreeIter)
+                                    gobject.idle_add(event.aFunc,ch,server,cTreeIter,usr)
 
     #!--QUIT MSG END--!#
 
