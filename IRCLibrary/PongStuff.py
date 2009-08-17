@@ -187,8 +187,8 @@ def kickResp(server,i):
                 try:
                     #Delete the user from the list of users.
                     for ch in server.channels:
-                        for usr in ch.cUsers:
-                            if usr.cNick.lower()==m.nick.split(",")[1].lower():
+                        if ch.cName.lower() == m.channel.lower():
+                            for usr in ch.cUsers:
                                 print usr.cNick.lower()
                                 cTreeIter = usr.cTreeIter
                                 ch.cUsers.remove(usr)
