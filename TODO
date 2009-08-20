@@ -2,4 +2,4 @@ NYX TODO List
 
 --Users tab autocomplete.
 ----Users tab autocomplete shows list of possible users, if for example there are two users Areg and Acoustic and you type A<TAB> it shows a list of Areg And Acoustic.
---Different colored Nicks
+--Different colored Nicks(DONE)

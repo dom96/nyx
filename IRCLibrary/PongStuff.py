@@ -356,6 +356,7 @@ def findIndex(usr,cServer,cChannel):
         print usr.cMode
         #1.Check what mode the user contains.
         cISet=False
+
         fUsers=[] #Founder Users
         #Loop through the users.
         itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
@@ -372,7 +373,8 @@ def findIndex(usr,cServer,cChannel):
         if "*" in usr.cMode:
             cIndex = fUsers.index(usr.cNick)
             cISet=True
-        
+        """--------------------------------------"""
+
         aUsers=[] #Admin Users
         #Loop through the users.
         itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
@@ -389,6 +391,7 @@ def findIndex(usr,cServer,cChannel):
         if "!" in usr.cMode and cISet==False:
             cIndex = aUsers.index(usr.cNick) + len(fUsers)
             cISet=True
+        """--------------------------------------"""
 
         oUsers=[] #Operator Users
         #Loop through the users.
@@ -407,7 +410,7 @@ def findIndex(usr,cServer,cChannel):
             print len(fUsers) + len(aUsers)
             cIndex = oUsers.index(usr.cNick) + len(fUsers) + len(aUsers)
             cISet=True
-
+        """--------------------------------------"""
         
         hUsers=[] #Half operator Users
         #Loop through the users.
@@ -425,7 +428,8 @@ def findIndex(usr,cServer,cChannel):
         if "%" in usr.cMode and cISet==False:
             cIndex = hUsers.index(usr.cNick) + len(fUsers) + len(aUsers) + len(oUsers)
             cISet=True
-        
+        """--------------------------------------"""
+
         vUsers=[] #voice Users
         #Loop through the users.
         itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
@@ -442,6 +446,7 @@ def findIndex(usr,cServer,cChannel):
         if "+" in usr.cMode and cISet==False:
             cIndex = vUsers.index(usr.cNick) + len(fUsers) + len(aUsers) + len(oUsers) + len(hUsers)
             cISet=True
+        """--------------------------------------"""
 
         #return the index
         return cIndex
@@ -464,8 +469,10 @@ def findIndex(usr,cServer,cChannel):
         print usr.cNick
         #3.Sort the list
         normUsers.sort(key=str.lower)
+        print normUsers
         #4.Find the index of where the nick that JOINed is.
-        cIndex = normUsers.index(usr.cNick) + uNormUsrInt
+        cIndex = normUsers.index(usr.cNick) + uNormUsrInt - 1
+        print cIndex
         #5.Return the index.
         return cIndex
 
@@ -510,7 +517,7 @@ def privmsgResp(server,i):#the private msg(Normal message)
 
             #!--CTCP VERSION--!#
             if m.msg.startswith("VERSION"):
-                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 170809 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/")
+                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 200809 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/")
             #!--CTCP VERSION END--!#
             #!--CTCP TIME--!#
             if m.msg.startswith("TIME"):

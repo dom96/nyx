@@ -26,7 +26,11 @@ serverAddr = "ikey.dynalias.com"
 channelName = "#freenode"
 port = 6667
 import random
-nickname = "Nyx" + str(random.randint(0,5))
+nickname = "Nyx" + str(random.randint(0,50))
+
+#Settings
+noUserIcons=False
+defaultBrowser="firefox"
 
 servers = [] #List of Servers, server()
 
@@ -61,6 +65,7 @@ class MainForm:
         self.w.connect("delete_event",self.delete_event)
         self.w.connect("map-event",self.window_focus)
         self.w.connect("focus-in-event",self.window_focus)
+        self.w.connect("focus-out-event",self.window_unfocus)
 
         self.w.set_default_size(750,450)
         
@@ -109,13 +114,18 @@ class MainForm:
 
         
     def delete_event(self, widget, event, data=None):
+        servers[0].cSocket.send("QUIT :" + "Nyx IRC Client, visit http://sourceforge.net/projects/nyxirc/\r\n")
         gtk.main_quit()
         return False
 
     def window_focus(self,widget,event):
         print "FOCUS"
         widget.set_urgency_hint(False)
+        widget.focused = True
 
+    def window_unfocus(self,widget,event):
+        print "UNFOCUS"
+        widget.focused = False
 
     def setupForm(self,w):
         global chatTextBuffer
@@ -412,9 +422,22 @@ class MainForm:
             msgTag = rChannel.cTextBuffer.create_tag(None)
             if cServer.cNick.lower() in cResp.msg.lower():
                 msgTag.set_property("foreground-gdk",highlightTagColor)
-                self.w.set_urgency_hint(True)
+                if self.w.focused==False:
+                    self.w.set_urgency_hint(True)
 
+            import re
+            m = re.search("https?://([-\w\.]+)+(:\d+)?(/([\w/_\.]*(\?\S+)?)?)?",cResp.msg)
+            endMark=rChannel.cTextBuffer.get_end_iter()
+            lineOffsetBAddMsg=endMark.get_line_offset()
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.msg + "\n",msgTag)
+            if m != None:
+                import pango
+                urlTag = rChannel.cTextBuffer.create_tag(None,underline=pango.UNDERLINE_SINGLE)
+                urlTag.connect("event",self.urlTextTagEvent,m.group(0))
+                endMark=rChannel.cTextBuffer.get_end_iter()
+                startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + m.start(0))
+                endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + m.end(0))
+                rChannel.cTextBuffer.apply_tag(urlTag,startIter,endIter)
 
         #Get the selected iter
         model, selected = listTreeView.get_selection().get_selected()
@@ -425,7 +448,17 @@ class MainForm:
         if newlySelected == rChannel.cName:
             #Scroll the TextView to the bottom...                                   
             endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
-            chatTextView.scroll_to_mark(endMark,0)     
+            chatTextView.scroll_to_mark(endMark,0) 
+
+    def urlTextTagEvent(self,texttag, widget, event, textiter,url):
+        print event
+        if event.type == gtk.gdk.BUTTON_RELEASE:
+            print "BTN RELEASE"
+            import os
+            os.system(defaultBrowser + " " + url)
+        if event.type == gtk.gdk.BUTTON_RELEASE:
+            pass
+    
     """
     onJoinMsg
     When a JOIN message is received.(When a user joins a channel)
@@ -834,51 +867,46 @@ class MainForm:
             for cUsr in cChannel.cUsers:
                 if cUsr.cNick == user:
                     if self.itrContainsString(cUsr.cNick,cServer.listTreeStore.iter_children(cChannel.cTreeIter),cServer.listTreeStore) == False:
-                        try:
+                        if noUserIcons==False:
                             cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,self.lookupIcon("founder")])
-                        except:
-                            print "ERROR! POSSIBLY NO PIXBUF! TRYING WITHOUT ICONS."
-                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,["["+usr.cMode+"]" + user,None])
+                        else:
+                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,None])
         #Add the admins, to the list of users
         for user in admins:
             for cUsr in cChannel.cUsers:
                 if cUsr.cNick == user:
                     if self.itrContainsString(cUsr.cNick,cServer.listTreeStore.iter_children(cChannel.cTreeIter),cServer.listTreeStore) == False:
-                        try:
+                        if noUserIcons==False:
                             cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,self.lookupIcon("admin")])
-                        except:
-                            print "ERROR! POSSIBLY NO PIXBUF! TRYING WITHOUT ICONS."
-                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,["["+usr.cMode+"]" + user,None])
+                        else:
+                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,None])
         #Add the operators, to the list of users
         for user in ops:
             for cUsr in cChannel.cUsers:
                 if cUsr.cNick == user:
                     if self.itrContainsString(cUsr.cNick,cServer.listTreeStore.iter_children(cChannel.cTreeIter),cServer.listTreeStore) == False:
-                        try:
+                        if noUserIcons==False:
                             cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,self.lookupIcon("op")])
-                        except:
-                            print "ERROR! POSSIBLY NO PIXBUF! TRYING WITHOUT ICONS."
-                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,["["+usr.cMode+"]" + user,None])
+                        else:
+                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,None])
         #Add the half operators, to the list of users
         for user in hops:
             for cUsr in cChannel.cUsers:
                 if cUsr.cNick == user:
                     if self.itrContainsString(cUsr.cNick,cServer.listTreeStore.iter_children(cChannel.cTreeIter),cServer.listTreeStore) == False:
-                        try:
+                        if noUserIcons==False:
                             cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,self.lookupIcon("hop")])
-                        except:
-                            print "ERROR! POSSIBLY NO PIXBUF! TRYING WITHOUT ICONS."
-                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,["["+usr.cMode+"]" + user,None])
+                        else:
+                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,None])
         #Add the voices, to the list of users
         for user in vs:
             for cUsr in cChannel.cUsers:
                 if cUsr.cNick == user:
                     if self.itrContainsString(cUsr.cNick,cServer.listTreeStore.iter_children(cChannel.cTreeIter),cServer.listTreeStore) == False:
-                        try:
+                        if noUserIcons==False:
                             cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,self.lookupIcon("voice")])
-                        except:
-                            print "ERROR! POSSIBLY NO PIXBUF! TRYING WITHOUT ICONS."
-                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,["["+usr.cMode+"]" + user,None])
+                        else:
+                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,None])
         #Add the rest, to the list of users
         for user in others:
             for cUsr in cChannel.cUsers:
@@ -928,19 +956,35 @@ class MainForm:
             print "onUserJoin, " + cUsr.cMode
             if "*" in cUsr.cMode or "~" in cUsr.cMode:
                 print "*",cIndex
-                cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("founder")])
+                if noUserIcons==False:
+                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("founder")])
+                else:
+                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,None])
+
                 return
             elif "!" in cUsr.cMode or "&" in cUsr.cMode:
-                cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("admin")])
+                if noUserIcons==False:
+                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("admin")])
+                else:
+                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,None])
                 return
             elif "@" in cUsr.cMode:
-                cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("op")])
+                if noUserIcons==False:
+                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("op")])
+                else:
+                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,None])
                 return
             elif "%" in cUsr.cMode:
-                cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("hop")])
+                if noUserIcons==False:
+                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("hop")])
+                else:
+                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,None])
                 return
             elif "+" in cUsr.cMode:
-                cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("voice")])
+                if noUserIcons==False:
+                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("voice")])
+                else:
+                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,None])
                 return
 
 
