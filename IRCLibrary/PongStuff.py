@@ -185,18 +185,43 @@ def kickResp(server,i):
                         gobject.idle_add(event.aFunc,m,server)
 
                 try:
-                    #Delete the user from the list of users.
-                    for ch in server.channels:
-                        if ch.cName.lower() == m.channel.lower():
-                            for usr in ch.cUsers:
-                                print usr.cNick.lower()
-                                cTreeIter = usr.cTreeIter
-                                ch.cUsers.remove(usr)
+                    #Delete all the users, if the user who was kicked is you.
+                    if m.nick == server.cNick:
+                        #Delete all the users.
+                        for ch in server.channels:
+                            if ch.cName.lower() == m.channel.lower():
+                                for usr in ch.cUsers:
+                                    print usr.cNick.lower()
+                                    cTreeIter = usr.cTreeIter
+                                    ch.cUsers.remove(usr)
+    
+                                    #Call the onUserRemove event
+                                    for event in IRC.eventFunctions:
+                                        if event.eventName == "onUserRemove" and event.cServer == server:
+                                            gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
+                    else:
+                        #Delete the user who got kicked.
+                        for ch in server.channels:
+                            if ch.cName.lower() == m.channel.lower():
+                                for usr in ch.cUsers:
+                                    
+                                    #m.nick is the nick that got kicked and the nick who kicked the user
+                                    #totally forgot...
+                                    personWhoWasKicked = m.nick.split(",")[1]
+                                    
+                                    if usr.cNick.lower() == personWhoWasKicked:
+                                        print "\033[1;31mRemoving %s from %s\033[1;m" % (personWhoWasKicked,ch.cName)
+                                        cTreeIter = usr.cTreeIter
+                                        ch.cUsers.remove(usr)
+    
+                                        #Call the onUserRemove event
+                                        for event in IRC.eventFunctions:
+                                            if event.eventName == "onUserRemove" and event.cServer == server:
+                                                gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
 
-                                #Call the onUserRemove event
-                                for event in IRC.eventFunctions:
-                                    if event.eventName == "onUserRemove" and event.cServer == server:
-                                        gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
+
+
+
                 except:
                     traceback.print_exc()
 
