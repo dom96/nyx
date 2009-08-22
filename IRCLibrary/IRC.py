@@ -190,22 +190,17 @@ def sendMsgBuffer(server):
                     currentTime=time.time()
                     if currentTime >= msgBuff.sendTimestamp:
                         i.cMsgBuffer.remove(msgBuff)
+                        print "sendMsgBuffer, " + i.cName
                         IRCHelper.sendMsg(server,i.cName,msgBuff.msg,True)
                         print "Entries in buffer left:"+str(len(i.cMsgBuffer))
+
                         #Call all the onByteSendChange events
                         for event in eventFunctions:
                             if event.eventName == "onByteSendChange" and event.cServer == server:
                                 gobject.idle_add(event.aFunc,server,len(i.cMsgBuffer))
                         break
-                    else:
-                        i.cMsgBuffer.remove(msgBuff)
-                        IRCHelper.sendMsg(server,i.cName,msgBuff.msg,True)
-                        print "Entries in buffer left:"+str(len(i.cMsgBuffer))
-                        #Call all the onByteSendChange events
-                        for event in eventFunctions:
-                            if event.eventName == "onByteSendChange" and event.cServer == server:
-                                gobject.idle_add(event.aFunc,server,len(i.cMsgBuffer))
-                        break
+
+
 
 
 #A connection to a server

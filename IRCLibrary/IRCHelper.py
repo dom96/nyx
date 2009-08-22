@@ -57,13 +57,14 @@ def sendMsg(server,cChannel,msg,buffMsg):
                 for ch in server.channels:
                     if ch.cName == cChannel:
                         channel=ch       
+                        print "Setting channel to " + ch.cName
 
                 #If this message is the 5th message to be sent in a row, then add >the number of sendInstantly equal to False msgBuffers< * 3
                 #(So it waits 3 times the number of non instantly sent messages, to send this message.)
                 if i >= 5:
-                    time=time.time() + (5*(len(channel.cMsgBuffer)+1))
+                    time=time.time() + (3*(len(channel.cMsgBuffer)+1))
                 elif i < 5 and len(channel.cMsgBuffer) != 0:
-                    time=time.time() + (5*(len(channel.cMsgBuffer)+1))
+                    time=time.time() + (3*(len(channel.cMsgBuffer)+1))
                 #Else, this is a message to be sent instantly.
                 else:
                     cmdSendMsg(server,cChannel,msgSplit[i])
@@ -80,6 +81,7 @@ def sendMsg(server,cChannel,msg,buffMsg):
                         if event.eventName == "onByteSendChange" and event.cServer == server:
                             gobject.idle_add(event.aFunc,server,len(channel.cMsgBuffer))
 
+
     else:
         for ch in server.channels:
             if ch.cName == cChannel:
@@ -95,10 +97,10 @@ def sendMsg(server,cChannel,msg,buffMsg):
                         #If this message is the 5th message to be sent in a row, then add >the number of sendInstantly equal to False msgBuffers< * 3
                         #(So it waits 3 times the number of non instantly sent messages, to send this message.)
                         if len(ch.cMsgBuffer) >= 5:
-                            time=time.time() + (5*(len(ch.cMsgBuffer)+1))
+                            time=time.time() + (3*(len(ch.cMsgBuffer)+1))
                         #Else, this is a message to be sent instantly.
                         else:
-                            cmdSendMsg(server,cChannel,msg)
+                            cmdSendMsg(server,ch.cName,msg)
                             instantMsg=True
 
                         if instantMsg != True:
@@ -106,7 +108,7 @@ def sendMsg(server,cChannel,msg,buffMsg):
                             msgBuff.msg=msg
                             msgBuff.sendTimestamp=time
                             ch.cMsgBuffer.append(msgBuff)
-
+                            print "\033[1;31mAdded to " + channel.cName
                             #Call all the onByteSendChange events
                             for event in IRC.eventFunctions:
                                 if event.eventName == "onByteSendChange" and event.cServer == server:

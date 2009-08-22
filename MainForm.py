@@ -18,6 +18,7 @@ gobject.threads_init()
 
 chatTextView = gtk.TextView()#The TextView for the chat
 
+
 listTreeStore = gtk.TreeStore(str,str)#For the list of servers,channels,users
 listTreeView = gtk.TreeView
 
@@ -262,6 +263,9 @@ class MainForm:
         self.chatTextView.set_editable(False)
         self.chatTextView.modify_font(pango.FontDescription("monospace 9"))
 
+        self.chatTextView.connect("populate-popup",self.TextView_populatePopup)
+        self.newTextViewMenu=[]
+
         #Borders
         self.chatTextView.set_border_window_size(gtk.TEXT_WINDOW_LEFT,1)
         self.chatTextView.set_border_window_size(gtk.TEXT_WINDOW_RIGHT,1)
@@ -424,20 +428,37 @@ class MainForm:
                 msgTag.set_property("foreground-gdk",highlightTagColor)
                 if self.w.focused==False:
                     self.w.set_urgency_hint(True)
-
+            #URLs-----------------------------------------------------
             import re
-            m = re.search("https?://([-\w\.]+)+(:\d+)?(/([\w/_\-\.]*(\?\S+)?)?)?",cResp.msg)
+            m = re.findall("(https?://([-\w\.]+)+(:\d+)?(/([\w/_\-\.]*(\?\S+)?)?)?)",cResp.msg)
             endMark=rChannel.cTextBuffer.get_end_iter()
             lineOffsetBAddMsg=endMark.get_line_offset()
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.msg + "\n",msgTag)
             if m != None:
                 import pango
-                urlTag = rChannel.cTextBuffer.create_tag(None,underline=pango.UNDERLINE_SINGLE)
-                urlTag.connect("event",self.urlTextTagEvent,m.group(0))
-                endMark=rChannel.cTextBuffer.get_end_iter()
-                startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + m.start(0))
-                endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + m.end(0))
-                rChannel.cTextBuffer.apply_tag(urlTag,startIter,endIter)
+                for i in m:
+                    urlTag = rChannel.cTextBuffer.create_tag(None,underline=pango.UNDERLINE_SINGLE)
+                    urlTag.connect("event",self.urlTextTagEvent,i[0])
+                    endMark=rChannel.cTextBuffer.get_end_iter()
+                    startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + cResp.msg.index(i[0]))
+                    endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + (cResp.msg.index(i[0]) + len(i[0])))
+                    rChannel.cTextBuffer.apply_tag(urlTag,startIter,endIter)
+            #URLs END-------------------------------------------------
+            #File Paths-----------------------------------------------------
+            import re
+            m = re.findall("([/|~][A-Za-z/.0-9]+)",cResp.msg)
+
+            if m != None:
+                import pango
+                for i in m:
+                    fileTag = rChannel.cTextBuffer.create_tag(None,underline=pango.UNDERLINE_SINGLE)
+                    fileTag.connect("event",self.fileTextTagEvent,i)
+                    endMark=rChannel.cTextBuffer.get_end_iter()
+                    startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + cResp.msg.index(i))
+                    endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + (cResp.msg.index(i) + len(i)))
+                    print str(lineOffsetBAddMsg + cResp.msg.index(i)) + "--" + str(lineOffsetBAddMsg + (cResp.msg.index(i) + len(i)))
+                    rChannel.cTextBuffer.apply_tag(fileTag,startIter,endIter)
+            #File Paths END-------------------------------------------------
 
         #Get the selected iter
         model, selected = listTreeView.get_selection().get_selected()
@@ -456,7 +477,40 @@ class MainForm:
             print "BTN RELEASE"
             import os
             os.system(defaultBrowser + " " + url)
-    
+
+
+    def fileTextTagEvent(self,texttag, widget, event, textiter,path):
+        print event
+        if event.type == gtk.gdk.BUTTON_PRESS:
+            if event.button == 3:
+                print "BTN PRESS"
+                menu = gtk.Menu()
+                seperator = gtk.SeparatorMenuItem()
+                open_item = gtk.MenuItem("Open")
+                openR_item = gtk.MenuItem("Open as root")
+                open_item.connect("activate", self.fileTextTagMenu_Activate,path)
+                openR_item.connect("activate", self.fileTextTagMenuR_Activate,path)
+                self.newTextViewMenu.append(seperator)
+                self.newTextViewMenu.append(open_item)
+                self.newTextViewMenu.append(openR_item)
+
+    def TextView_populatePopup(self,textview, menu):
+        print "TextView_populatePopup"
+        print self.newTextViewMenu
+        if len(self.newTextViewMenu) != 0:
+            for i in self.newTextViewMenu:
+                menu.append(i)
+                i.show()
+            self.newTextViewMenu = []
+
+
+    def fileTextTagMenu_Activate(self, widget, path):
+        import os
+        os.system("gnome-open " + path)
+
+    def fileTextTagMenuR_Activate(self, widget, path):
+        import os
+        os.system("gksudo 'gnome-open %s'" % path)    
     """
     onJoinMsg
     When a JOIN message is received.(When a user joins a channel)
@@ -993,9 +1047,9 @@ class MainForm:
     def onUserRemove(self,cChannel,cServer,cTreeIter,usr):
         print "onUserRemove"
         print cChannel.cName
-        try:
+        if usr != None:
             cChannel.cUsers.remove(usr)
-        except:
+        else:
             print "An error occured while trying to remove user from the user list, received",usr ," onUserRemove"
 
         try:
@@ -1079,18 +1133,19 @@ class MainForm:
             msgTag = rChannel.cTextBuffer.create_tag(None)
 
             import re
-            m = re.search("https?://([-\w\.]+)+(:\d+)?(/([\w/_\-\.]*(\?\S+)?)?)?",cResp.msg)
+            m = re.findall("(https?://([-\w\.]+)+(:\d+)?(/([\w/_\-\.]*(\?\S+)?)?)?)",cResp.msg)
             endMark=rChannel.cTextBuffer.get_end_iter()
             lineOffsetBAddMsg=endMark.get_line_offset()
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.msg + "\n",msgTag)
             if m != None:
                 import pango
-                urlTag = rChannel.cTextBuffer.create_tag(None,underline=pango.UNDERLINE_SINGLE)
-                urlTag.connect("event",self.urlTextTagEvent,m.group(0))
-                endMark=rChannel.cTextBuffer.get_end_iter()
-                startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + m.start(0))
-                endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + m.end(0))
-                rChannel.cTextBuffer.apply_tag(urlTag,startIter,endIter)
+                for i in m:
+                    urlTag = rChannel.cTextBuffer.create_tag(None,underline=pango.UNDERLINE_SINGLE)
+                    urlTag.connect("event",self.urlTextTagEvent,i[0])
+                    endMark=rChannel.cTextBuffer.get_end_iter()
+                    startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + cResp.msg.index(i[0]))
+                    endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + (cResp.msg.index(i[0]) + len(i[0])))
+                    rChannel.cTextBuffer.apply_tag(urlTag,startIter,endIter)
 
         #Get the selected iter
         model, selected = listTreeView.get_selection().get_selected()

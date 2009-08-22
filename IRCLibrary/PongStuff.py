@@ -323,6 +323,7 @@ def joinResp(server,i):#The join message
                         nChannel.cName = m.channel
                         nChannel.cTextBuffer = gtk.TextBuffer()
                         nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.channel,None])
+                        nChannel.cMsgBuffer = [] #This fixes the weird problem with the queue being in the wrong channel.
                         #Add the newly JOINed channel to the Servers channel list
                         server.channels.append(nChannel)
                 else:
