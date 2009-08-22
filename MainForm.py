@@ -22,15 +22,15 @@ listTreeStore = gtk.TreeStore(str,str)#For the list of servers,channels,users
 listTreeView = gtk.TreeView
 
 #Info
-serverAddr = "ikey.dynalias.com"
-channelName = "#freenode"
-port = 6667
+serverAddr = "irc.archerseven.com"
+channelName = "#Nyx"
+port = 6669
 import random
 nickname = "Nyx" + str(random.randint(0,50))
 
 #Settings
 noUserIcons=False
-defaultBrowser="firefox"
+defaultBrowser="x-www-browser"
 
 servers = [] #List of Servers, server()
 
@@ -104,14 +104,13 @@ class MainForm:
         IRC.connectEvent("onUsersChange",self.onUsersChange,self.nServer)
         IRC.connectEvent("onUserJoin",self.onUserJoin,self.nServer)
         IRC.connectEvent("onUserRemove",self.onUserRemove,self.nServer)
-        IRC.connectEvent("onLagChange",self.onLagChange,self.nServer)        
+        IRC.connectEvent("onLagChange",self.onLagChange,self.nServer)     
+        IRC.connectEvent("onByteSendChange",self.onByteSendChange,self.nServer)   
 
         #Start a new a connection to a server(Multi threaded)
         gtk.gdk.threads_enter()
         thread.start_new(IRC.connect,(serverAddr,nickname,"NyxIRC",port,self.nServer))
         gtk.gdk.threads_leave()
-        
-
         
     def delete_event(self, widget, event, data=None):
         servers[0].cSocket.send("QUIT :" + "Nyx IRC Client, visit http://sourceforge.net/projects/nyxirc/\r\n")
@@ -235,9 +234,14 @@ class MainForm:
         selection.connect('changed', self.TreeView_OnSelectionChanged)
 
         #PING measure
-        self.pingLabel = gtk.Label("PING")
+        self.pingLabel = gtk.Label("LAG")
         self.TreeVBox.pack_start(self.pingLabel,False,False,5)
         self.pingLabel.show()
+
+        #Number of messages in the msgBuffer(queue) which are waiting to be sent.
+        self.queueLabel = gtk.Label("0 Entries in queue")
+        self.TreeVBox.pack_start(self.queueLabel,False,False,5)
+        self.queueLabel.show()
 
         #HBox - For the TextView and EntryBox
         self.VBox1 = gtk.VBox()
@@ -275,38 +279,40 @@ class MainForm:
         self.chatEntry.show()
 
     def chatEntry_Activate(self,widget):
-        global timeTagColor, nickTagColor
-        #Get the current channel...
-        if len(servers[0].channels) != 0:
-            #Loop through all of the channels
-            for i in servers[0].channels:
-                selection = listTreeView.get_selection()
-                model, selected = selection.get_selected()
-                #Select the one that is selected in the treeview
-                if listTreeStore.get_value(selected, 0).replace(" ","") == i.cName:
-                    cChannel = i
+        if widget.get_text() != "":
+            global timeTagColor, nickTagColor
+            #Get the current channel...
+            if len(servers[0].channels) != 0:
+                #Loop through all of the channels
+                for i in servers[0].channels:
+                    selection = listTreeView.get_selection()
+                    model, selected = selection.get_selected()
+                    #Select the one that is selected in the treeview
+                    if listTreeStore.get_value(selected, 0).replace(" ","") == i.cName:
+                        cChannel = i
         
-        wText = widget.get_text()
-        if wText.startswith(" "):
-            wText = wText[1:]
+            wText = widget.get_text()
+            if wText.startswith(" "):
+                wText = wText[1:]
 
-        #Add what you said to the TextView
-        if self.entryBoxCheck(wText,servers[0]) == False:
-            IRCHelper.sendMsg(servers[0],cChannel.cName,wText)
+            #Add what you said to the TextView
+            import sendMsg
+            if sendMsg.entryBoxCheck(wText,servers[0],listTreeView) == False:
+                IRCHelper.sendMsg(servers[0],cChannel.cName,wText,False)
+    
+                #Create the colors
+                nickTag = cChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
+                timeTag = cChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey 
+                global nickname
+                cChannel.cTextBuffer.insert_with_tags(cChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
+                cChannel.cTextBuffer.insert_with_tags(cChannel.cTextBuffer.get_end_iter()," " + servers[0].cNick + ": ",nickTag)
+                cChannel.cTextBuffer.insert(cChannel.cTextBuffer.get_end_iter(),wText + "\n")
+    
+                #Scroll the TextView to the bottom...                                   
+                endMark = cChannel.cTextBuffer.create_mark(None, cChannel.cTextBuffer.get_end_iter(), True)
+                chatTextView.scroll_to_mark(endMark,0)   
 
-            #Create the colors
-            nickTag = cChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
-            timeTag = cChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey 
-            global nickname
-            cChannel.cTextBuffer.insert_with_tags(cChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
-            cChannel.cTextBuffer.insert_with_tags(cChannel.cTextBuffer.get_end_iter()," " + servers[0].cNick + ": ",nickTag)
-            cChannel.cTextBuffer.insert(cChannel.cTextBuffer.get_end_iter(),wText + "\n")
-
-            #Scroll the TextView to the bottom...                                   
-            endMark = cChannel.cTextBuffer.create_mark(None, cChannel.cTextBuffer.get_end_iter(), True)
-            chatTextView.scroll_to_mark(endMark,0)   
-
-        widget.set_text("")
+            widget.set_text("")
 
     def TreeView_OnSelectionChanged(self,selection):
         #Get the selected iter
@@ -394,13 +400,21 @@ class MainForm:
         timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey 
         highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=highlightTagColor)#Red    
 
+        import mIRCColors
+        newNickTagColor = mIRCColors.mIRCColors.get(mIRCColors.canonicalColor(cResp.nick)[0])
+        nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=newNickTagColor)
         if "ACTION" in cResp.msg:
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
-            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," @" + " " + cResp.nick,nickTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >",highlightTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"!",nickTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"<",highlightTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," " + cResp.nick,nickTag)
             rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter(),cResp.msg.replace("ACTION","").replace("","") + "\n")
         elif "" in cResp.msg:
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
-            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >!<",nickTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >",highlightTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"!",nickTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"<",highlightTag)
             rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter()," Received CTCP " + cResp.msg.replace("","") + " from " + cResp.nick + "\n")
         else:
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
@@ -413,9 +427,6 @@ class MainForm:
                 rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),": ",nickTag)
             #If it's a message to the channel
             else:
-                import mIRCColors
-                newNickTagColor = mIRCColors.mIRCColors.get(mIRCColors.canonicalColor(cResp.nick)[0])
-                nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=newNickTagColor)
                 rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," " + cResp.nick + ": ",nickTag)
 
             #Make a tag for the message
@@ -426,7 +437,7 @@ class MainForm:
                     self.w.set_urgency_hint(True)
 
             import re
-            m = re.search("https?://([-\w\.]+)+(:\d+)?(/([\w/_\.]*(\?\S+)?)?)?",cResp.msg)
+            m = re.search("https?://([-\w\.]+)+(:\d+)?(/([\w/_\-\.]*(\?\S+)?)?)?",cResp.msg)
             endMark=rChannel.cTextBuffer.get_end_iter()
             lineOffsetBAddMsg=endMark.get_line_offset()
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.msg + "\n",msgTag)
@@ -456,8 +467,6 @@ class MainForm:
             print "BTN RELEASE"
             import os
             os.system(defaultBrowser + " " + url)
-        if event.type == gtk.gdk.BUTTON_RELEASE:
-            pass
     
     """
     onJoinMsg
@@ -1017,73 +1026,18 @@ class MainForm:
         print "onLagChange " + cResp[3] + " lag = " + str(lagInt)
         self.pingLabel.set_text(str(lagInt))
 
-
+    """
+    onByteSendChange
+    When the amount of Bytes to send(which reside in the queue waiting to be sent) changes
+    """
+    def onByteSendChange(self,cServer,entriesLeft):
+        self.queueLabel.set_text(str(entriesLeft) + " Entries in queue")
 
     #||IRC Events end||#
     """---------------------------------------------"""
 
 
-    #EntryBox Activated, Checks for any commands, like /j or /join.
-    def entryBoxCheck(self,text,server):
-        if text.startswith("/j") or text.startswith("/join"):
-            IRCHelper.join(server,text.replace("/j ","").replace("/join ",""),listTreeStore)
-            return True
-        if text.startswith("/msg"):
-            splitText = text.replace("/msg ","").split(" ")
-            count = 0     
-            msg = ""
-            for i in splitText:
-                if count > 0:
-                    msg += i + " "
-                count += 1                
 
-            IRCHelper.sendMsg(server,splitText[0],msg)
-            return True
-        if text.startswith("/nick"):
-            print "NICK " + text.replace("/nick ","")
-            server.cSocket.send("NICK " + text.replace("/nick ","") + "\r\n")
-            return True
-            
-
-        if text.startswith("/raw"):
-            splitText = text.replace("/raw ","").split(" ")
-            rawMsg = ""
-            for i in splitText:
-                rawMsg += i + " "
-                
-            server.cSocket.send(rawMsg + "\r\n")
-            return True
-
-        """NEED TO MAKE THIS IN A SEPERATE FILE, ALL THE CTCP STUFF."""
-        if text.startswith("/version"):
-            IRCHelper.sendMsg(server,text.replace("/version ",""),"\x01VERSION\x01")
-            #PRIVMSG dom96 :VERSION
-            return True
-        if text.startswith("/ctcp"):
-            splitText = text.replace("/ctcp ","").split()
-            try:
-                to=splitText[0]#dom96 for example
-                ctcp=splitText[1]#VERSION for example
-                IRCHelper.sendMsg(server,to,"\x01" + ctcp + "\x01")
-            except:
-                pass
-            return True
-
-        if text.startswith("/me"):
-            from IRCLibrary import ResponseParser
-            fakecResp=ResponseParser.privMsg()
-            fakecResp.msg="ACTION " + text[4:] + ""
-            fakecResp.nick=server.cNick
-            #Get the selected channel
-            model, selected = listTreeView.get_selection().get_selected()
-            cSelected = listTreeStore.get_value(selected, 0)            
-            fakecResp.channel=cSelected
-
-            self.onPrivMsg(fakecResp,server)
-            IRCHelper.sendMsg(server,cSelected,"ACTION " + text[4:] + "")
-            return True
-
-        return False
 
 def main():
     gtk.gdk.threads_enter()

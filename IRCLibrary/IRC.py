@@ -102,6 +102,10 @@ def connect(address, nick, realname,port,server):
     thread.start_new(pingServer,(server,))
     gtk.gdk.threads_leave()
 
+    gtk.gdk.threads_enter()
+    thread.start_new(sendMsgBuffer,(server,))
+    gtk.gdk.threads_leave()
+
 def pingPong(server):
     MOTDStarted = False
     MOTD=""
@@ -176,6 +180,35 @@ def pingServer(server):
         server.cSocket.send("PING LAG" + str(time.time()) + "\r\n")
         time.sleep(15)
 
+def sendMsgBuffer(server):
+    while(True):
+        import time
+        time.sleep(1)
+        for i in server.channels:
+            if len(i.cMsgBuffer) != 0:
+                for msgBuff in i.cMsgBuffer:
+                    if msgBuff.sendInstantly==False:
+                        currentTime=time.time()
+                        if currentTime >= msgBuff.sendTimestamp:
+                            i.cMsgBuffer.remove(msgBuff)
+                            IRCHelper.sendMsg(server,i.cName,msgBuff.msg,True)
+                            print "Entries in buffer left:"+str(len(i.cMsgBuffer))
+                            #Call all the onByteSendChange events
+                            for event in eventFunctions:
+                                if event.eventName == "onByteSendChange" and event.cServer == server:
+                                    gobject.idle_add(event.aFunc,server,len(i.cMsgBuffer))
+                            break
+                    else:
+                        i.cMsgBuffer.remove(msgBuff)
+                        IRCHelper.sendMsg(server,i.cName,msgBuff.msg,True)
+                        print "Entries in buffer left:"+str(len(i.cMsgBuffer))
+                        #Call all the onByteSendChange events
+                        for event in eventFunctions:
+                            if event.eventName == "onByteSendChange" and event.cServer == server:
+                                gobject.idle_add(event.aFunc,server,len(i.cMsgBuffer))
+                        break
+
+
 #A connection to a server
 class server():
     cAddress="" #The address of this server.
@@ -195,6 +228,7 @@ class channel():
     cUsers=[] #A list of users(Class user()) in this channel.(Get's updated every nickchange, exit,part,join,modechange and i think that's it...)
     cTreeIter=gtk.TreeIter #The treeiter, for easy access of the channels iter.
     cTextBuffer=gtk.TextBuffer() #The TextBuffer, with all of the messages, said by users etc.
+    cMsgBuffer=[] #A list of messages waiting to be sent(class msgBuffer())
     
 #A user connected to a channel.
 class user():
@@ -204,6 +238,12 @@ class user():
     cUser="" #What XChat calls "user" of a user(lol), e.g: ~dom96@SpotChat-74E2DEB3.range86-131.btcentralplus.com, HOST ? appropriate name ?
     cServer="" #Usually something like: next.spotchat.org
     cTreeIter=gtk.TreeIter #The TreeIter, for easy access of the users iter.
+
+#A buffer for messages in the queue which are waiting to be sent.
+class msgBuffer():
+    msg="" #Msg which is waiting to be sent.
+    sendTimestamp=0.0 #Timestamp(Seconds since the unix epoch) when this message is mean to be sent.
+    sendInstantly=False #Determines if this msg should be sent instantly
 
 #Event stuff(event=string,function=def)
 def connectEvent(event,function,aServer):

@@ -186,7 +186,7 @@ def kickResp(server,i):
 
                 try:
                     #Delete all the users, if the user who was kicked is you.
-                    if m.nick == server.cNick:
+                    if m.nick.split(",")[1] == server.cNick:
                         #Delete all the users.
                         for ch in server.channels:
                             if ch.cName.lower() == m.channel.lower():
@@ -517,7 +517,7 @@ def privmsgResp(server,i):#the private msg(Normal message)
 
             #!--CTCP VERSION--!#
             if m.msg.startswith("VERSION"):
-                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 200809 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/")
+                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 220809 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/")
             #!--CTCP VERSION END--!#
             #!--CTCP TIME--!#
             if m.msg.startswith("TIME"):
