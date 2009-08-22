@@ -167,20 +167,10 @@ def parseMsg(data,noUnicode):
         except:        
             msgInt = msgInt - 1
 
-        for i in range(len(splitMsg)):
-            if i > msgInt:
-                if i != msgInt+1:
-                    if noUnicode != True:
-                        m.msg += unicode(splitMsg[i], 'utf-8') + " "
-                    else:                    
-                        m.msg += splitMsg[i] + " "
-                elif i == msgInt+1 and splitMsg[i].startswith(":"):
-                    if noUnicode != True:
-                        m.msg += unicode(splitMsg[i][1:], 'utf-8') + " "
-                    else:                        
-                        m.msg += splitMsg[i][1:] + " "
-
-        m.msg = m.msg[:-1]
+        import re
+        print data[1:]
+        reMatch = re.search(":.+",data[1:])
+        m.msg = reMatch.group(0)[1:][:-1]
     
     except:
         print "Error in parseMsg"

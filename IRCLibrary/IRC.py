@@ -187,17 +187,16 @@ def sendMsgBuffer(server):
         for i in server.channels:
             if len(i.cMsgBuffer) != 0:
                 for msgBuff in i.cMsgBuffer:
-                    if msgBuff.sendInstantly==False:
-                        currentTime=time.time()
-                        if currentTime >= msgBuff.sendTimestamp:
-                            i.cMsgBuffer.remove(msgBuff)
-                            IRCHelper.sendMsg(server,i.cName,msgBuff.msg,True)
-                            print "Entries in buffer left:"+str(len(i.cMsgBuffer))
-                            #Call all the onByteSendChange events
-                            for event in eventFunctions:
-                                if event.eventName == "onByteSendChange" and event.cServer == server:
-                                    gobject.idle_add(event.aFunc,server,len(i.cMsgBuffer))
-                            break
+                    currentTime=time.time()
+                    if currentTime >= msgBuff.sendTimestamp:
+                        i.cMsgBuffer.remove(msgBuff)
+                        IRCHelper.sendMsg(server,i.cName,msgBuff.msg,True)
+                        print "Entries in buffer left:"+str(len(i.cMsgBuffer))
+                        #Call all the onByteSendChange events
+                        for event in eventFunctions:
+                            if event.eventName == "onByteSendChange" and event.cServer == server:
+                                gobject.idle_add(event.aFunc,server,len(i.cMsgBuffer))
+                        break
                     else:
                         i.cMsgBuffer.remove(msgBuff)
                         IRCHelper.sendMsg(server,i.cName,msgBuff.msg,True)
@@ -243,7 +242,6 @@ class user():
 class msgBuffer():
     msg="" #Msg which is waiting to be sent.
     sendTimestamp=0.0 #Timestamp(Seconds since the unix epoch) when this message is mean to be sent.
-    sendInstantly=False #Determines if this msg should be sent instantly
 
 #Event stuff(event=string,function=def)
 def connectEvent(event,function,aServer):

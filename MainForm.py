@@ -105,7 +105,8 @@ class MainForm:
         IRC.connectEvent("onUserJoin",self.onUserJoin,self.nServer)
         IRC.connectEvent("onUserRemove",self.onUserRemove,self.nServer)
         IRC.connectEvent("onLagChange",self.onLagChange,self.nServer)     
-        IRC.connectEvent("onByteSendChange",self.onByteSendChange,self.nServer)   
+        IRC.connectEvent("onByteSendChange",self.onByteSendChange,self.nServer)
+        IRC.connectEvent("onOwnPrivMsg",self.onOwnPrivMsg,self.nServer)
 
         #Start a new a connection to a server(Multi threaded)
         gtk.gdk.threads_enter()
@@ -239,7 +240,7 @@ class MainForm:
         self.pingLabel.show()
 
         #Number of messages in the msgBuffer(queue) which are waiting to be sent.
-        self.queueLabel = gtk.Label("0 Entries in queue")
+        self.queueLabel = gtk.Label("0 messages")
         self.TreeVBox.pack_start(self.queueLabel,False,False,5)
         self.queueLabel.show()
 
@@ -299,18 +300,6 @@ class MainForm:
             import sendMsg
             if sendMsg.entryBoxCheck(wText,servers[0],listTreeView) == False:
                 IRCHelper.sendMsg(servers[0],cChannel.cName,wText,False)
-    
-                #Create the colors
-                nickTag = cChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
-                timeTag = cChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey 
-                global nickname
-                cChannel.cTextBuffer.insert_with_tags(cChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
-                cChannel.cTextBuffer.insert_with_tags(cChannel.cTextBuffer.get_end_iter()," " + servers[0].cNick + ": ",nickTag)
-                cChannel.cTextBuffer.insert(cChannel.cTextBuffer.get_end_iter(),wText + "\n")
-    
-                #Scroll the TextView to the bottom...                                   
-                endMark = cChannel.cTextBuffer.create_mark(None, cChannel.cTextBuffer.get_end_iter(), True)
-                chatTextView.scroll_to_mark(endMark,0)   
 
             widget.set_text("")
 
@@ -1031,7 +1020,88 @@ class MainForm:
     When the amount of Bytes to send(which reside in the queue waiting to be sent) changes
     """
     def onByteSendChange(self,cServer,entriesLeft):
-        self.queueLabel.set_text(str(entriesLeft) + " Entries in queue")
+        self.queueLabel.set_text(str(entriesLeft) + " messages")
+
+    """
+    onOwnPrivMsg
+    When the user sends a message to a nick or to a channel - Adds the message set to the correct TextBuffer
+    """
+    def onOwnPrivMsg(self,cResp,cServer):
+        global timeTagColor
+        global nickTagColor
+        #Get the textbuffer for the right channel.
+        for ch in cServer.channels:
+            if ch.cName.lower() == cResp.channel.lower():
+                rChannel = ch
+
+        #If the "Channel" in the cResp is your nick, add it to the currently selected channel/server
+        if cResp.channel.lower() == cServer.cNick.lower():
+            #Get the server first, this way if the selected chanel isn't found it's not gonna generate an exception
+            rChannel = cServer
+            #Get the selected iter
+            model, selected = listTreeView.get_selection().get_selected()
+            treeiterSelected = listTreeStore.get_value(selected, 0)
+            for ch in cServer.channels:
+                if ch.cName.lower() == treeiterSelected.lower():
+                    rChannel = ch
+
+        nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
+        timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey 
+        highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=highlightTagColor)#Red    
+
+        if "ACTION" in cResp.msg:
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >",highlightTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"!",nickTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"<",highlightTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," " + cResp.nick,nickTag)
+            rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter(),cResp.msg.replace("ACTION","").replace("","") + "\n")
+        elif "" in cResp.msg:
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >",highlightTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"!",nickTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"<",highlightTag)
+            rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter()," Received CTCP " + cResp.msg.replace("","") + " from " + cResp.nick + "\n")
+        else:
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
+
+            #If it's a Private Message to you not the channel.
+            if cResp.channel == cServer.cNick:
+                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," )",highlightTag)
+                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick,nickTag)
+                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"(",highlightTag)
+                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),": ",nickTag)
+            #If it's a message to the channel
+            else:
+                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," " + cResp.nick + ": ",nickTag)
+
+            #Make a tag for the message
+            msgTag = rChannel.cTextBuffer.create_tag(None)
+
+            import re
+            m = re.search("https?://([-\w\.]+)+(:\d+)?(/([\w/_\-\.]*(\?\S+)?)?)?",cResp.msg)
+            endMark=rChannel.cTextBuffer.get_end_iter()
+            lineOffsetBAddMsg=endMark.get_line_offset()
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.msg + "\n",msgTag)
+            if m != None:
+                import pango
+                urlTag = rChannel.cTextBuffer.create_tag(None,underline=pango.UNDERLINE_SINGLE)
+                urlTag.connect("event",self.urlTextTagEvent,m.group(0))
+                endMark=rChannel.cTextBuffer.get_end_iter()
+                startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + m.start(0))
+                endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + m.end(0))
+                rChannel.cTextBuffer.apply_tag(urlTag,startIter,endIter)
+
+        #Get the selected iter
+        model, selected = listTreeView.get_selection().get_selected()
+        newlySelected = listTreeStore.get_value(selected, 0)
+        #Check to see if this channel is selected, and scroll the TextView if it is.
+        #If i don't do this the TextView will scroll even when you have another channel/server selected
+        #which is a bit annoying
+        if newlySelected == rChannel.cName:
+            #Scroll the TextView to the bottom...                                   
+            endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
+            chatTextView.scroll_to_mark(endMark,0) 
 
     #||IRC Events end||#
     """---------------------------------------------"""

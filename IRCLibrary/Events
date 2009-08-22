@@ -12,3 +12,6 @@ onModeChange - When a user changes someones MODE - pResp,cServer
 onUsersChange - After a channel is joined - cChannel,cServer
 onUserJoin - When a user joins a channel, provides the user ,the index(so it's ordered alphabetically) of where to add the user and the cUsr - cChannel,cServer,cIndex,cUsr
 onUserRemove - When a user either QUIT's or PART's(from a channel), provides the user and the TreeIter of the TreeIter to remove from the TreeStore - cChannel,cServer,cTreeIter,usr(user() to remove from the userlist)
+onLagChange - When the lag changes - cResp,cServer
+onByteSendChange - When the number of messages waiting to be sent changes - cServer,entriesLeft
+onOwnPrivMsg - When this user sends a message to the server - cResp, cServer
