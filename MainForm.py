@@ -473,26 +473,38 @@ class MainForm:
 
     def urlTextTagEvent(self,texttag, widget, event, textiter,url):
         print event
-        if event.type == gtk.gdk.BUTTON_RELEASE:
-            print "BTN RELEASE"
-            import os
+        if event.type == gtk.gdk.BUTTON_PRESS:
+            if event.button == 3:
+                print "BTN PRESS"
+                seperator = gtk.SeparatorMenuItem()
+                open_item = gtk.MenuItem("Open in default web browser")
+                open_item.connect("activate", self.urlTextTagMenu_Activate,url)
+                self.newTextViewMenu = []
+                self.newTextViewMenu.append(seperator)
+                self.newTextViewMenu.append(open_item)
+
+    def urlTextTagMenu_Activate(self, widget, url):
+        import os
+        if os.name != "nt":
             os.system(defaultBrowser + " " + url)
+        else:
+            os.system(url)
 
-
+    """FILE TextTag -------------------------------------------------"""
     def fileTextTagEvent(self,texttag, widget, event, textiter,path):
         print event
         if event.type == gtk.gdk.BUTTON_PRESS:
             if event.button == 3:
                 print "BTN PRESS"
-                menu = gtk.Menu()
-                seperator = gtk.SeparatorMenuItem()
-                open_item = gtk.MenuItem("Open")
-                openR_item = gtk.MenuItem("Open as root")
-                open_item.connect("activate", self.fileTextTagMenu_Activate,path)
-                openR_item.connect("activate", self.fileTextTagMenuR_Activate,path)
-                self.newTextViewMenu.append(seperator)
-                self.newTextViewMenu.append(open_item)
-                self.newTextViewMenu.append(openR_item)
+                if len(self.newTextViewMenu) == 0:
+                    seperator = gtk.SeparatorMenuItem()
+                    open_item = gtk.MenuItem("Open")
+                    openR_item = gtk.MenuItem("Open as root")
+                    open_item.connect("activate", self.fileTextTagMenu_Activate,path)
+                    openR_item.connect("activate", self.fileTextTagMenuR_Activate,path)
+                    self.newTextViewMenu.append(seperator)
+                    self.newTextViewMenu.append(open_item)
+                    self.newTextViewMenu.append(openR_item)
 
     def TextView_populatePopup(self,textview, menu):
         print "TextView_populatePopup"
@@ -503,14 +515,15 @@ class MainForm:
                 i.show()
             self.newTextViewMenu = []
 
-
     def fileTextTagMenu_Activate(self, widget, path):
         import os
         os.system("gnome-open " + path)
 
     def fileTextTagMenuR_Activate(self, widget, path):
         import os
-        os.system("gksudo 'gnome-open %s'" % path)    
+        os.system("gksudo 'gnome-open %s'" % path)
+    """FILE TextTag END----------------------------------------------"""
+
     """
     onJoinMsg
     When a JOIN message is received.(When a user joins a channel)
@@ -1132,6 +1145,7 @@ class MainForm:
             #Make a tag for the message
             msgTag = rChannel.cTextBuffer.create_tag(None)
 
+            #URLs-----------------------------------------------------
             import re
             m = re.findall("(https?://([-\w\.]+)+(:\d+)?(/([\w/_\-\.]*(\?\S+)?)?)?)",cResp.msg)
             endMark=rChannel.cTextBuffer.get_end_iter()
@@ -1146,6 +1160,22 @@ class MainForm:
                     startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + cResp.msg.index(i[0]))
                     endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + (cResp.msg.index(i[0]) + len(i[0])))
                     rChannel.cTextBuffer.apply_tag(urlTag,startIter,endIter)
+            #URLs END-------------------------------------------------
+            #File Paths-----------------------------------------------------
+            import re
+            m = re.findall("([/|~][A-Za-z/.0-9]+)",cResp.msg)
+
+            if m != None:
+                import pango
+                for i in m:
+                    fileTag = rChannel.cTextBuffer.create_tag(None,underline=pango.UNDERLINE_SINGLE)
+                    fileTag.connect("event",self.fileTextTagEvent,i)
+                    endMark=rChannel.cTextBuffer.get_end_iter()
+                    startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + cResp.msg.index(i))
+                    endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + (cResp.msg.index(i) + len(i)))
+                    print str(lineOffsetBAddMsg + cResp.msg.index(i)) + "--" + str(lineOffsetBAddMsg + (cResp.msg.index(i) + len(i)))
+                    rChannel.cTextBuffer.apply_tag(fileTag,startIter,endIter)
+            #File Paths END-------------------------------------------------
 
         #Get the selected iter
         model, selected = listTreeView.get_selection().get_selected()

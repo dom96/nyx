@@ -48,6 +48,21 @@ def sendMsg(server,cChannel,msg,buffMsg):
                 iMsg=iMsg[400:]
             msgSplit.append(iMsg)
 
+        newMsgSplit=[]
+        #Loop through the msgSplit to see if any of the messages are more then 400 characters
+        for i in range(0,len(msgSplit)):
+            if len(msgSplit[i]) > 400:
+                #If this message is bigger then 400 characters then split it.
+                iMsg=msgSplit[i]
+                while (len(iMsg) > 400):
+                    newMsgSplit.append(iMsg[:400])
+                    iMsg=iMsg[400:]
+                newMsgSplit.append(iMsg)
+            else:
+                #If this message is not bigger then 400 characters, then add it to the new list without spliting it.
+                newMsgSplit.append(msgSplit[i])
+        msgSplit=newMsgSplit
+
         #Loops through the parts of the message(the split message)
         for i in range(0,len(msgSplit)):
             if msgSplit[i] != "":
@@ -108,7 +123,7 @@ def sendMsg(server,cChannel,msg,buffMsg):
                             msgBuff.msg=msg
                             msgBuff.sendTimestamp=time
                             ch.cMsgBuffer.append(msgBuff)
-                            print "\033[1;31mAdded to " + channel.cName
+                            print "\033[1;31mAdded to " + ch.cName
                             #Call all the onByteSendChange events
                             for event in IRC.eventFunctions:
                                 if event.eventName == "onByteSendChange" and event.cServer == server:
