@@ -191,7 +191,7 @@ def sendMsgBuffer(server):
                     if currentTime >= msgBuff.sendTimestamp:
                         i.cMsgBuffer.remove(msgBuff)
                         print "sendMsgBuffer, " + i.cName
-                        IRCHelper.sendMsg(server,i.cName,msgBuff.msg,True)
+                        IRCHelper.cmdSendMsg(server,msgBuff.dest,msgBuff.msg)
                         print "Entries in buffer left:"+str(len(i.cMsgBuffer))
 
                         #Call all the onByteSendChange events
@@ -199,9 +199,6 @@ def sendMsgBuffer(server):
                             if event.eventName == "onByteSendChange" and event.cServer == server:
                                 gobject.idle_add(event.aFunc,server,len(i.cMsgBuffer))
                         break
-
-
-
 
 #A connection to a server
 class server():
@@ -232,11 +229,14 @@ class user():
     cUser="" #What XChat calls "user" of a user(lol), e.g: ~dom96@SpotChat-74E2DEB3.range86-131.btcentralplus.com, HOST ? appropriate name ?
     cServer="" #Usually something like: next.spotchat.org
     cTreeIter=gtk.TreeIter #The TreeIter, for easy access of the users iter.
+    cTextBuffer=gtk.TextBuffer() #The TextBuffer with the conversation with this user.
+    cChannel=None #The channel this user belongs to
 
 #A buffer for messages in the queue which are waiting to be sent.
 class msgBuffer():
     msg="" #Msg which is waiting to be sent.
     sendTimestamp=0.0 #Timestamp(Seconds since the unix epoch) when this message is mean to be sent.
+    dest="" #The destination can be either a user or a channel
 
 #Event stuff(event=string,function=def)
 def connectEvent(event,function,aServer):

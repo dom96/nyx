@@ -59,4 +59,11 @@ def entryBoxCheck(text,server,listTreeView):
         IRCHelper.sendMsg(server,cSelected,"ACTION " + text[4:] + "",False)
         return True
 
+    if text.startswith("/") and text.startswith("//") == False:
+        server.cSocket.send(text.replace("/","") + "\r\n")
+        return True
+
+
+
+
     return False

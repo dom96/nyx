@@ -255,7 +255,6 @@ class MainForm:
         self.VBox1.pack_start(self.chatScrolledWindow)
         self.chatScrolledWindow.show()
 
-
         #TextView - For the actual chat...
         self.chatTextView = gtk.TextView()
         self.chatTextView.set_buffer(servers[0].cTextBuffer)
@@ -281,6 +280,7 @@ class MainForm:
         self.chatEntry = gtk.Entry()
         self.VBox1.pack_end(self.chatEntry,False,False,5)
         self.chatEntry.connect("activate",self.chatEntry_Activate)
+        self.chatEntry.connect("focus-out-event",self.chatEntry_focusOut)
         self.chatEntry.show()
 
     def chatEntry_Activate(self,widget):
@@ -292,10 +292,17 @@ class MainForm:
                 for i in servers[0].channels:
                     selection = listTreeView.get_selection()
                     model, selected = selection.get_selected()
-                    #Select the one that is selected in the treeview
-                    if listTreeStore.get_value(selected, 0).replace(" ","") == i.cName:
-                        cChannel = i
-        
+                    sl=listTreeStore.get_value(selected, 0).replace(" ","")
+                    if sl.startswith("#"):
+                        #Select the one that is selected in the treeview
+                        if sl == i.cName:
+                            dest = i.cName
+                    else:
+                        for usr in i.cUsers:
+                            if usr.cNick == sl:
+                                dest = usr.cNick
+
+
             wText = widget.get_text()
             if wText.startswith(" "):
                 wText = wText[1:]
@@ -303,9 +310,14 @@ class MainForm:
             #Add what you said to the TextView
             import sendMsg
             if sendMsg.entryBoxCheck(wText,servers[0],listTreeView) == False:
-                IRCHelper.sendMsg(servers[0],cChannel.cName,wText,False)
+                print dest
+                IRCHelper.sendMsg(servers[0],dest,wText,False)
 
             widget.set_text("")
+    def chatEntry_focusOut(self,widget, event):
+        widget.grab_focus()
+        print "chatEntry.grab_focus()"
+
 
     def TreeView_OnSelectionChanged(self,selection):
         #Get the selected iter
@@ -314,15 +326,26 @@ class MainForm:
         print newlySelected
 
         if listTreeStore.iter_parent(selected) != None:#If the selected iter is a channel
-            for i in servers[0].channels:
-                if i.cName == newlySelected:
-                    chatTextView.set_buffer(i.cTextBuffer)
-                    print "NewTextBuffer Channel = " + i.cName
+            if newlySelected.startswith("#"):
+                for i in servers[0].channels:
+                    if i.cName == newlySelected:
+                        chatTextView.set_buffer(i.cTextBuffer)
+                        print "NewTextBuffer Channel = " + i.cName
+            else:
+                for i in servers[0].channels:
+                    for usr in i.cUsers:
+                        if usr.cNick == newlySelected:
+                            chatTextView.set_buffer(usr.cTextBuffer)
+                            print "NewTextBuffer User = " + usr.cNick
         else:#If the selected iter is a server
             for i in servers:
                 if i.cAddress == newlySelected:
                     chatTextView.set_buffer(i.cTextBuffer)
-                    print "NewTextBuffer Channel = " + i.cAddress
+                    print "NewTextBuffer Server = " + i.cAddress
+
+        #Scroll the TextView to the bottom...                                   
+        endMark = servers[0].cTextBuffer.create_mark(None, servers[0].cTextBuffer.get_end_iter(), True)
+        chatTextView.scroll_to_mark(endMark,0)
 
     #||IRC Events||#
     """
@@ -378,6 +401,8 @@ class MainForm:
             if ch.cName.lower() == cResp.channel.lower():
                 rChannel = ch
 
+
+
         #If the "Channel" in the cResp is your nick, add it to the currently selected channel/server
         if cResp.channel.lower() == cServer.cNick.lower():
             #Get the server first, this way if the selected chanel isn't found it's not gonna generate an exception
@@ -388,6 +413,10 @@ class MainForm:
             for ch in cServer.channels:
                 if ch.cName.lower() == treeiterSelected.lower():
                     rChannel = ch
+                if cResp.channel.lower().startswith("#") == False:
+                    for usr in ch.cUsers:
+                        if usr.cNick == cResp.nick.lower():
+                            rChannel = usr
 
         nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
         timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey 
@@ -414,10 +443,10 @@ class MainForm:
 
             #If it's a Private Message to you not the channel.
             if cResp.channel == cServer.cNick:
-                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," )",highlightTag)
-                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick,nickTag)
-                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"(",highlightTag)
-                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),": ",nickTag)
+                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," " + cResp.nick + ": ",nickTag)
+                if self.w.focused==False:
+                    self.w.set_urgency_hint(True)
+                #TODO: Make the TreeView TreeIter change color.
             #If it's a message to the channel
             else:
                 rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," " + cResp.nick + ": ",nickTag)
@@ -446,7 +475,7 @@ class MainForm:
             #URLs END-------------------------------------------------
             #File Paths-----------------------------------------------------
             import re
-            m = re.findall("([/|~][A-Za-z/.0-9]+)",cResp.msg)
+            m = re.findall("(^[/|~][A-Za-z/.0-9]+)",cResp.msg)
 
             if m != None:
                 import pango
@@ -486,7 +515,7 @@ class MainForm:
     def urlTextTagMenu_Activate(self, widget, url):
         import os
         if os.name != "nt":
-            os.system(defaultBrowser + " " + url)
+            os.system(defaultBrowser + " \"" + url + "\"")
         else:
             os.system(url)
 
@@ -842,7 +871,12 @@ class MainForm:
     
         print "cResp.msg=" + cResp.msg
         mode = cResp.msg.split()[0]
-        personModeChange = cResp.msg.split()[1] #Person who's mode got changed
+        personModeChange=None
+        try:
+            personModeChange = cResp.msg.split()[1] #Person who's mode got changed
+        except:
+            print "Channel mode change?"
+
 
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
         #>!<
@@ -852,8 +886,13 @@ class MainForm:
 
         #nick
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick,nickTag)
-        # sets mode +o for dom96
-        rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter()," sets mode " + mode + " for " + personModeChange + "\n")
+        # sets mode +o for dom96 - user mode change
+        if personModeChange != None:
+            rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter()," sets mode " + mode + " for " + personModeChange + "\n")
+        #Channel mode change
+        else:
+            rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter()," sets mode " + mode + " in channel " + cResp.channel + "\n")
+  
 
         #Get the selected iter
         model, selected = listTreeView.get_selection().get_selected()
@@ -1100,6 +1139,10 @@ class MainForm:
         for ch in cServer.channels:
             if ch.cName.lower() == cResp.channel.lower():
                 rChannel = ch
+            if cResp.channel.lower().startswith("#") == False:
+                for usr in ch.cUsers:
+                    if usr.cNick == cResp.channel.lower():
+                        rChannel = usr
 
         #If the "Channel" in the cResp is your nick, add it to the currently selected channel/server
         if cResp.channel.lower() == cServer.cNick.lower():
@@ -1128,19 +1171,11 @@ class MainForm:
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >",highlightTag)
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"!",nickTag)
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"<",highlightTag)
-            rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter()," Received CTCP " + cResp.msg.replace("","") + " from " + cResp.nick + "\n")
+            rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter()," Sent CTCP " + cResp.msg.replace("","") + " to " + cResp.channel + "\n")
         else:
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
 
-            #If it's a Private Message to you not the channel.
-            if cResp.channel == cServer.cNick:
-                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," )",highlightTag)
-                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick,nickTag)
-                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"(",highlightTag)
-                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),": ",nickTag)
-            #If it's a message to the channel
-            else:
-                rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," " + cResp.nick + ": ",nickTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," " + cResp.nick + ": ",nickTag)
 
             #Make a tag for the message
             msgTag = rChannel.cTextBuffer.create_tag(None)
@@ -1163,7 +1198,7 @@ class MainForm:
             #URLs END-------------------------------------------------
             #File Paths-----------------------------------------------------
             import re
-            m = re.findall("([/|~][A-Za-z/.0-9]+)",cResp.msg)
+            m = re.findall("(^[/|~][A-Za-z/.0-9]+)",cResp.msg)
 
             if m != None:
                 import pango
@@ -1183,10 +1218,15 @@ class MainForm:
         #Check to see if this channel is selected, and scroll the TextView if it is.
         #If i don't do this the TextView will scroll even when you have another channel/server selected
         #which is a bit annoying
+        try:
+            rChannel.cName=rChannel.cNick 
+        except:
+            print "Making rChannel.cName=rChannel.cNick failed."        
+
         if newlySelected == rChannel.cName:
             #Scroll the TextView to the bottom...                                   
             endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
-            chatTextView.scroll_to_mark(endMark,0) 
+            chatTextView.scroll_to_mark(endMark,0)
 
     #||IRC Events end||#
     """---------------------------------------------"""

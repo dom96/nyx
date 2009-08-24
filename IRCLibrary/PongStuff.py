@@ -256,6 +256,8 @@ def userStuff(server,i):#The user list.
                     usr = IRC.user()
                     #Get the user mode.
                     userF=user
+                    usr.cChannel=channel
+                    usr.cTextBuffer=gtk.TextBuffer()
                     while(userF.startswith("*") or userF.startswith("!") or userF.startswith("@") or userF.startswith("%") 
 or userF.startswith("+") or userF.startswith("~") or userF.startswith("&")):
                         usr.cMode += userF[:1]
@@ -332,6 +334,8 @@ def joinResp(server,i):#The join message
                         if ch.cName == m.channel:
                             usr=IRC.user()
                             usr.cNick=m.nick
+                            usr.cChannel=ch
+                            usr.cTextBuffer = gtk.TextBuffer()
                             ch.cUsers.append(usr)
                             try:
                                 cIndex=findIndex(usr,server,ch)

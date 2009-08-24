@@ -70,7 +70,12 @@ def sendMsg(server,cChannel,msg,buffMsg):
                 instantMsg=False #If this is set to true the message won't be added to the msg buffer.
                 #Loops through the channels to find the right channel, to append the new msgBuffer
                 for ch in server.channels:
-                    if ch.cName == cChannel:
+                    usrDest=None
+                    if cChannel.startswith("#") == False:
+                        for usr in ch.cUsers:
+                            if usr.cNick == cChannel:
+                                usrDest=usr
+                    if ch.cName == cChannel or ch.cName == usrDest.cChannel.cName:
                         channel=ch       
                         print "Setting channel to " + ch.cName
 
@@ -89,6 +94,7 @@ def sendMsg(server,cChannel,msg,buffMsg):
                     msgBuff=IRC.msgBuffer()
                     msgBuff.msg=msgSplit[i]
                     msgBuff.sendTimestamp=time
+                    msgBuff.dest=cChannel
 
                     channel.cMsgBuffer.append(msgBuff)
                     #Call all the onByteSendChange events
@@ -99,12 +105,19 @@ def sendMsg(server,cChannel,msg,buffMsg):
 
     else:
         for ch in server.channels:
-            if ch.cName == cChannel:
+            usrDest=None
+            if cChannel.startswith("#") == False:
+                for usr in ch.cUsers:
+                    if usr.cNick == cChannel:
+                        usrDest=usr
+
+            if ch.cName == cChannel or ch.cName == usrDest.cChannel.cName:
                 #If it's not a message originating from IRC.sendMsgBuffer
                 if buffMsg == False:
                     #If the msgBuffer(msg queue) has no messages waiting to be sent, send this message right now.
                     if len(ch.cMsgBuffer) == 0:
                         cmdSendMsg(server,cChannel,msg)
+                        break
                     #If the msgBuffer(msg queue) has messages waiting, add this new message to the end of the queue.
                     else:
                         import time
@@ -122,6 +135,7 @@ def sendMsg(server,cChannel,msg,buffMsg):
                             msgBuff=IRC.msgBuffer()
                             msgBuff.msg=msg
                             msgBuff.sendTimestamp=time
+                            msgBuff.dest=cChannel
                             ch.cMsgBuffer.append(msgBuff)
                             print "\033[1;31mAdded to " + ch.cName
                             #Call all the onByteSendChange events
@@ -129,9 +143,18 @@ def sendMsg(server,cChannel,msg,buffMsg):
                                 if event.eventName == "onByteSendChange" and event.cServer == server:
                                     gobject.idle_add(event.aFunc,server,len(ch.cMsgBuffer))
 
+                        break
+
+                        
+
                 #If it is originating from IRC.sendMsgBuffer
                 else:
                     cmdSendMsg(server,cChannel,msg)
+
+
+
+
+
 #A cleaner one function way to send a message
 def cmdSendMsg(server,cChannel,msg):
     print "\033[1;34mPRIVMSG " + cChannel + " :" + msg + "\\r\\n\033[1;m"
