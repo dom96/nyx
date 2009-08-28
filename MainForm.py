@@ -342,7 +342,7 @@ class MainForm:
                 for i in servers[0].channels:
                     for usr in i.cUsers:
                         if usr.cNick == newlySelected and NewTextBufferSelected == False:
-                            i.listTreeStore.set_value(usr.cTreeIter,2,normalChannelColor)
+                            servers[0].listTreeStore.set_value(usr.cTreeIter,2,normalChannelColor)
                             chatTextView.set_buffer(usr.cTextBuffer)
                             print "NewTextBuffer User = " + usr.cNick + " channel = " + i.cName
                             NewTextBufferSelected=True
