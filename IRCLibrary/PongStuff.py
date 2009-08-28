@@ -64,36 +64,37 @@ def modeResp(server,i):
                 try:
                     nM = mLetters(m.msg.split()[0])
                     print nM
+                    #Check if it's a users mode being changed
+                    if len(m.msg.split()) > 1:
+                        #Find the cTreeIter
+                        for ch in server.channels:
+                            if ch.cName.lower() == m.channel.lower():
+                                for usr in ch.cUsers:
+                                    if usr.cNick.lower() == m.msg.split()[1].lower():
+                                        print usr.cTreeIter
+                                        cTreeIter = usr.cTreeIter
+                                        for event in IRC.eventFunctions:
+                                            if event.eventName == "onUserRemove" and event.cServer == server:
+                                                gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
 
-                    #Find the cTreeIter
-                    for ch in server.channels:
-                        if ch.cName.lower() == m.channel.lower():
-                            for usr in ch.cUsers:
-                                if usr.cNick.lower() == m.msg.split()[1].lower():
-                                    print usr.cTreeIter
-                                    cTreeIter = usr.cTreeIter
-                                    for event in IRC.eventFunctions:
-                                        if event.eventName == "onUserRemove" and event.cServer == server:
-                                            gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
-
-                    for ch in server.channels:
-                        if ch.cName.lower() == m.channel.lower():
-                            for usr in ch.cUsers:
-                                if usr.cNick.lower() == m.msg.split()[1].lower():
-                                    print usr.cMode
-                                    #Set the new MODE for the user.
-                                    if nM.startswith("-"):
-                                        for char in nM.replace("-",""):
-                                            usr.cMode = usr.cMode.replace(char,"")
-                                        print "usr.cMode = " + usr.cMode
-                                    else:
-                                        usr.cMode += nM
-
-                                    cIndex = findIndex(usr,server,ch)
-                                        
-                                    for event in IRC.eventFunctions:
-                                        if event.eventName == "onUserJoin" and event.cServer == server:
-                                            gobject.idle_add(event.aFunc,ch,server,cIndex,usr)
+                        for ch in server.channels:
+                            if ch.cName.lower() == m.channel.lower():
+                                for usr in ch.cUsers:
+                                    if usr.cNick.lower() == m.msg.split()[1].lower():
+                                        print usr.cMode
+                                        #Set the new MODE for the user.
+                                        if nM.startswith("-"):
+                                            for char in nM.replace("-",""):
+                                                usr.cMode = usr.cMode.replace(char,"")
+                                            print "usr.cMode = " + usr.cMode
+                                        else:
+                                            usr.cMode += nM
+    
+                                        cIndex = findIndex(usr,server,ch)
+                                            
+                                        for event in IRC.eventFunctions:
+                                            if event.eventName == "onUserJoin" and event.cServer == server:
+                                                gobject.idle_add(event.aFunc,ch,server,cIndex,usr)
                 except:
                     traceback.print_exc()
 
@@ -131,7 +132,7 @@ def servResp(server,i):
     for m in splitNewLines:
         splitI = i.split(" ")
     try:
-        if (splitI[1] in numericCode() or splitI[1]+splitI[2] == "NOTICEAUTH"):
+        if (splitI[1] in numericCode() or splitI[1]+splitI[2] == "NOTICEAUTH" or "NOTICE AUTH" in m):
             datParsed = ResponseParser.parse(i,True,False)
             for event in IRC.eventFunctions:
                 if event.eventName == "onServerMsg" and event.cServer == server:
@@ -153,10 +154,19 @@ def numericCode():
             numericCode.append("00"+str(count))
         else:    
             numericCode.append("0"+str(count))
+
     count=199
     while(count<300):
         count+=1
         numericCode.append(str(count))
+
+    count=400
+    while(count<599):
+        count+=1
+        numericCode.append(str(count))
+
+    
+
     return numericCode
 #!--Serv resp stuff END--!#
 
@@ -324,7 +334,10 @@ def joinResp(server,i):#The join message
                         nChannel = IRC.channel()
                         nChannel.cName = m.channel
                         nChannel.cTextBuffer = gtk.TextBuffer()
-                        nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.channel,None])
+                        try:
+                            nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.channel,None,gtk.gdk.Color(red=0,green=0,blue=0,pixel=0)])
+                        except:
+                            import traceback; traceback.print_exc()
                         nChannel.cMsgBuffer = [] #This fixes the weird problem with the queue being in the wrong channel.
                         #Add the newly JOINed channel to the Servers channel list
                         server.channels.append(nChannel)

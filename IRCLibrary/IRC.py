@@ -88,8 +88,6 @@ def connect(address, nick, realname,port,server):
         #if event.eventName == "onServerMsg" and event.cServer == server:
             #event.aFunc(datParsed,server)
 
-
-
     #Add all the info of the server.
     server.cAddress = address
     server.cNick = nick
@@ -211,6 +209,7 @@ class server():
     cTextBuffer=gtk.TextBuffer() #The TextBuffer, with the server messages.
     channels=[] #A List of channel(), these are all of the channels currently connected on his server.
     listTreeStore=gtk.TreeStore #The treestore, for easy access
+    cTreeIter=gtk.TreeIter #The treeiter, for easy access of the servers iter.
 
 #A channel connection, on a server.
 class channel():
@@ -230,7 +229,7 @@ class user():
     cServer="" #Usually something like: next.spotchat.org
     cTreeIter=gtk.TreeIter #The TreeIter, for easy access of the users iter.
     cTextBuffer=gtk.TextBuffer() #The TextBuffer with the conversation with this user.
-    cChannel=None #The channel this user belongs to
+    cChannel=channel() #The channel this user belongs to
 
 #A buffer for messages in the queue which are waiting to be sent.
 class msgBuffer():

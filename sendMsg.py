@@ -14,7 +14,7 @@ def entryBoxCheck(text,server,listTreeView):
                 msg += i + " "
             count += 1                
 
-        IRCHelper.sendMsg(server,splitText[0],msg,False)
+        IRCHelper.cmdSendMsg(server,splitText[0],msg)
         return True
     if text.startswith("/nick"):
         print "NICK " + text.replace("/nick ","")
@@ -55,7 +55,6 @@ def entryBoxCheck(text,server,listTreeView):
         cSelected = server.listTreeStore.get_value(selected, 0)            
         fakecResp.channel=cSelected
 
-        self.onPrivMsg(fakecResp,server)
         IRCHelper.sendMsg(server,cSelected,"ACTION " + text[4:] + "",False)
         return True
 

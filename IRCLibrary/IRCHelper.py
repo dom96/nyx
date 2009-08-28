@@ -70,7 +70,7 @@ def sendMsg(server,cChannel,msg,buffMsg):
                 instantMsg=False #If this is set to true the message won't be added to the msg buffer.
                 #Loops through the channels to find the right channel, to append the new msgBuffer
                 for ch in server.channels:
-                    usrDest=None
+                    usrDest=IRC.user() #Made it not None, it couses a bug with or ch.cName == usrDest.cChannel.cName, so i changed it to this...
                     if cChannel.startswith("#") == False:
                         for usr in ch.cUsers:
                             if usr.cNick == cChannel:
@@ -105,7 +105,7 @@ def sendMsg(server,cChannel,msg,buffMsg):
 
     else:
         for ch in server.channels:
-            usrDest=None
+            usrDest=IRC.user() #Made it not None, it couses a bug with or ch.cName == usrDest.cChannel.cName, so i changed it to this...
             if cChannel.startswith("#") == False:
                 for usr in ch.cUsers:
                     if usr.cNick == cChannel:
