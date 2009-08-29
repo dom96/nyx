@@ -106,7 +106,7 @@ def parseServer(data):
                     mList.append(m)
         except:
             #traceback.print_exc()
-            print "Error in parseServer. " + i
+            pDebug("Error in parseServer. " + i)
 
 
     return mList
@@ -135,7 +135,7 @@ def parseMOTD(data):
 
         except:
             #traceback.print_exc()
-            print "Error in parseMOTD -):" + i
+            pDebug("Error in parseMOTD -):" + i)
 
     #for i in mList:
         #print i.msg
@@ -168,12 +168,12 @@ def parseMsg(data,noUnicode):
             msgInt = msgInt - 1
 
         import re
-        print data[1:]
+        pDebug(data[1:])
         reMatch = re.search(":.+",data[1:])
         m.msg = reMatch.group(0)[1:][:-1]
     
     except:
-        print "Error in parseMsg"
+        pDebug("\033[1;40m\033[1;33mError in parseMsg\033[1;m\033[1;m")
         traceback.print_exc()
         return False  
 
@@ -181,7 +181,7 @@ def parseMsg(data,noUnicode):
 
 #Parses the user list.
 def parseUsers(data,server,nChannel):
-    print "parseUsers"
+    pDebug("parseUsers")
     #User List Started ?
     UserLstStart=False
     UserLstCmds=""
@@ -199,7 +199,7 @@ def parseUsers(data,server,nChannel):
             #!--332 Topic message--#!
             if servResp[0].code == "332":
                 nChannel.cTopic = servResp[0].msg
-                print "servPars: " + servResp[0].msg
+                pDebug("servPars: " + servResp[0].msg)
             #!--332 Topic message END--#!
             #!--353 User list message--#!
             if servResp[0].code == "353":
@@ -293,7 +293,7 @@ def parseMode(data):
         
         m.msg = m.msg[:-1]
     except:
-        print "Error in parseMode"
+        pDebug("\033[1;40m\033[1;33mError in parseMode\033[1;m\033[1;m")
         traceback.print_exc()
         return False  
 
@@ -317,7 +317,13 @@ class privMsg():
     msg=""
 
 
-
+import inspect
+debugInfo=True
+def pDebug(txt):
+    if debugInfo:
+        func = str(inspect.getframeinfo(inspect.currentframe().f_back).function)
+        filename = str(inspect.getframeinfo(inspect.currentframe().f_back).filename);filename = filename.split("/")[len(filename.split("/"))-1]
+        print "[\033[1;34m"+str(inspect.currentframe().f_back.f_lineno).rjust(3, '0')+"\033[1;m, " + filename +"(" + func + ")]\n    " + str(txt)
 
 
 

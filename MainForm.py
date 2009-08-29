@@ -126,12 +126,12 @@ class MainForm:
         return False
 
     def window_focus(self,widget,event):
-        print "FOCUS"
+        pDebug("FOCUS")
         widget.set_urgency_hint(False)
         widget.focused = True
 
     def window_unfocus(self,widget,event):
-        print "UNFOCUS"
+        pDebug("UNFOCUS")
         widget.focused = False
 
     def setupForm(self,w,nServer):
@@ -318,7 +318,7 @@ class MainForm:
             #Add what you said to the TextView
             import sendMsg
             if sendMsg.entryBoxCheck(wText,servers[0],listTreeView) == False:
-                print dest
+                pDebug(dest)
                 IRCHelper.sendMsg(servers[0],dest,wText,False)
 
             widget.set_text("")
@@ -328,7 +328,7 @@ class MainForm:
         #Get the selected iter
         model, selected = selection.get_selected()
         newlySelected = listTreeStore.get_value(selected, 0)
-        print newlySelected
+        pDebug(newlySelected)
 
         if listTreeStore.iter_parent(selected) != None:#If the selected iter is a channel
             if newlySelected.startswith("#"):
@@ -336,7 +336,7 @@ class MainForm:
                     if i.cName == newlySelected:
                         servers[0].listTreeStore.set_value(i.cTreeIter,2,normalChannelColor)
                         chatTextView.set_buffer(i.cTextBuffer)
-                        print "NewTextBuffer Channel = " + i.cName
+                        pDebug("NewTextBuffer Channel = " + i.cName)
             else:
                 NewTextBufferSelected = False #This is so it doesn't select the textbuffer of the users from another channel
                 for i in servers[0].channels:
@@ -344,7 +344,7 @@ class MainForm:
                         if usr.cNick == newlySelected and NewTextBufferSelected == False:
                             servers[0].listTreeStore.set_value(usr.cTreeIter,2,normalChannelColor)
                             chatTextView.set_buffer(usr.cTextBuffer)
-                            print "NewTextBuffer User = " + usr.cNick + " channel = " + i.cName
+                            pDebug("NewTextBuffer User = " + usr.cNick + " channel = " + i.cName)
                             NewTextBufferSelected=True
 
         else:#If the selected iter is a server
@@ -352,14 +352,14 @@ class MainForm:
                 if i.cAddress == newlySelected:
                     i.listTreeStore.set_value(i.cTreeIter,2,normalChannelColor)
                     chatTextView.set_buffer(i.cTextBuffer)
-                    print "NewTextBuffer Server = " + i.cAddress
+                    pDebug("NewTextBuffer Server = " + i.cAddress)
 
         #Scroll the TextView to the bottom...                                   
         endMark = chatTextView.get_buffer().create_mark(None, chatTextView.get_buffer().get_end_iter(), True)
         chatTextView.scroll_to_mark(endMark,0)
 
     def TreeView_focusInEvent(self,widget,event):
-        print "TreeView_Activated"
+        pDebug("TreeView_Activated")
         self.chatEntry.grab_focus()
 
     #||IRC Events||#
@@ -369,7 +369,7 @@ class MainForm:
     """
     def onMotdMsg(self,cResp,cServer):#When a MOTD message is received and parsed.
         global chatTextView
-        print "onMotdMsg"
+        pDebug("onMotdMsg")
         nickTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
         timeTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey 
         highlightTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=highlightTagColor)#Red
@@ -384,7 +384,7 @@ class MainForm:
                     cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),"!",nickTag)
                     cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),"< ",highlightTag)
                     cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),m.msg + "\n",motdTag)
-                    print "\033[1;35m" + i + "\033[1;m"
+                    pDebug("\033[1;35m" + i + "\033[1;m")
                     
 
         #Get the selected iter
@@ -430,11 +430,6 @@ class MainForm:
                 destTxtBuff.cTextBuffer.insert_with_tags(destTxtBuff.cTextBuffer.get_end_iter(),"<",highlightTag)
                 destTxtBuff.cTextBuffer.insert_with_tags(destTxtBuff.cTextBuffer.get_end_iter(),m.msg + "\n",serverMsgTag)
 
-
-
-
-
-
         """---------------------"""
         #This is if the serverMsg is for a server
         try:
@@ -448,7 +443,7 @@ class MainForm:
             if change==True:
                 destTxtBuff.cName=destTxtBuff.cAddress
         except:
-            print "Making destTxtBuff.cName=destTxtBuff.cAddress failed."
+            pDebug("\033[1;40m\033[1;33mMaking destTxtBuff.cName=destTxtBuff.cAddress failed.\033[1;m\033[1;m")
         """----------------------"""
         #Get the selected iter
         model, selected = listTreeView.get_selection().get_selected()
@@ -487,7 +482,7 @@ class MainForm:
                     rChannel = ch
                 if cResp.channel.lower().startswith("#") == False:
                     for usr in ch.cUsers:
-                        if usr.cNick == cResp.nick.lower():
+                        if usr.cNick.lower() == cResp.nick.lower():
                             rChannel = usr
 
         nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
@@ -577,7 +572,7 @@ class MainForm:
                     endMark=rChannel.cTextBuffer.get_end_iter()
                     startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + cResp.msg.index(i))
                     endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + (cResp.msg.index(i) + len(i)))
-                    print str(lineOffsetBAddMsg + cResp.msg.index(i)) + "--" + str(lineOffsetBAddMsg + (cResp.msg.index(i) + len(i)))
+                    pDebug(str(lineOffsetBAddMsg + cResp.msg.index(i)) + "--" + str(lineOffsetBAddMsg + (cResp.msg.index(i) + len(i))))
                     rChannel.cTextBuffer.apply_tag(fileTag,startIter,endIter)
             #File Paths END-------------------------------------------------
 
@@ -600,7 +595,7 @@ class MainForm:
             if change==True:
                 rChannel.cName=rChannel.cNick 
         except:
-            print "Making rChannel.cName=rChannel.cNick failed."
+            pDebug("\033[1;40m\033[1;33mMaking rChannel.cName=rChannel.cNick failed.\033[1;m\033[1;m")
         """----------------------"""
         if newlySelected == rChannel.cName:
             #Scroll the TextView to the bottom...                                   
@@ -612,10 +607,9 @@ class MainForm:
 
     """-!-!-!-!-!-!-!-!-!-!-TextTagEvents-!-!-!-!-!-!-!-!-!-!-!-!-"""
     def urlTextTagEvent(self,texttag, widget, event, textiter,url):
-        print event
         if event.type == gtk.gdk.BUTTON_PRESS:
             if event.button == 3:
-                print "BTN PRESS"
+                pDebug("BTN PRESS")
                 seperator = gtk.SeparatorMenuItem()
                 open_item = gtk.MenuItem("Open in default web browser")
                 open_item.connect("activate", self.urlTextTagMenu_Activate,url)
@@ -632,10 +626,9 @@ class MainForm:
 
     """FILE TextTag -------------------------------------------------"""
     def fileTextTagEvent(self,texttag, widget, event, textiter,path):
-        print event
         if event.type == gtk.gdk.BUTTON_PRESS:
             if event.button == 3:
-                print "BTN PRESS"
+                pDebug("BTN PRESS")
                 if len(self.newTextViewMenu) == 0:
                     seperator = gtk.SeparatorMenuItem()
                     open_item = gtk.MenuItem("Open")
@@ -647,8 +640,8 @@ class MainForm:
                     self.newTextViewMenu.append(openR_item)
 
     def TextView_populatePopup(self,textview, menu):
-        print "TextView_populatePopup"
-        print self.newTextViewMenu
+        pDebug("TextView_populatePopup")
+        pDebug(self.newTextViewMenu)
         if len(self.newTextViewMenu) != 0:
             for i in self.newTextViewMenu:
                 menu.append(i)
@@ -674,7 +667,7 @@ class MainForm:
         global timeTagColor
         #Get the textbuffer for the right channel.
         for ch in cServer.channels:
-            print ch.cName,cResp.channel
+            pDebug(ch.cName + cResp.channel)
             if ch.cName.lower() == cResp.channel.lower():
                 rChannel = ch
 
@@ -739,7 +732,7 @@ class MainForm:
                     if cResp.nick.lower() == user.cNick.lower():
                         rChannel = ch
 
-                        print "Found channel: \033[1;35m" + rChannel.cName + "\033[1;m"
+                        pDebug("Found channel: \033[1;35m" + rChannel.cName + "\033[1;m")
 
                         nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
                         timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey    
@@ -914,7 +907,7 @@ class MainForm:
         global nickTagColor
         global timeTagColor
         global nickname
-        print "OnNickChange"
+        pDebug("OnNickChange")
         #Get the textbuffer for the right channel.
         for ch in cServer.channels:
             if ch.cName.lower() == cResp.msg.lower():
@@ -980,11 +973,11 @@ class MainForm:
                         #Search for the user and change his name.(in the treeview)
                         for user in rChannel.cUsers:
                             if user.cNick.lower() == cResp.nick.lower():
-                                print "Setting-" + cResp.msg
-                                print rChannel.cTreeIter,user.cTreeIter
-                                print "USER =",cServer.listTreeStore.get_value(user.cTreeIter,0)
-                                cServer.listTreeStore.set_value(user.cTreeIter,0,cResp.msg)                        
-                                user.cNick = cResp.msg
+                                pDebug("Setting-" + cResp.msg)
+                                #pDebug(str(rChannel.cTreeIter) + str(user.cTreeIter))
+                                #pDebug("USER =" + str(cServer.listTreeStore.get_value(user.cTreeIter,0)))
+                                #cServer.listTreeStore.set_value(user.cTreeIter,0,cResp.msg)                        
+                                #user.cNick = cResp.msg
 
 
                         #Search the name in the Users
@@ -1002,13 +995,13 @@ class MainForm:
         timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey    
         highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=highlightTagColor)#Green
     
-        print "cResp.msg=" + cResp.msg
+        pDebug("cResp.msg=" + cResp.msg)
         mode = cResp.msg.split()[0]
         personModeChange=None
         try:
             personModeChange = cResp.msg.split()[1] #Person who's mode got changed
         except:
-            print "Channel mode change?"
+            pDebug("\033[1;40m\033[1;33mThe cResp didn't have a person who's mode got changed(possibly)\033[1;m\033[1;m")
 
 
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
@@ -1062,45 +1055,45 @@ class MainForm:
         owners = []
         for user in cChannel.cUsers:
             if "*" in user.cMode or "~" in user.cMode:
-                print "Adding " + user.cNick + " to Founders(With mode",user.cMode + ")"
+                pDebug("Adding " + user.cNick + " to Founders(With mode " + user.cMode + ")")
                 owners.append(user.cNick)
         owners.sort(key=str.lower)              
         admins = []
         for user in cChannel.cUsers:
             if "!" in user.cMode or "&" in user.cMode:
-                print "Adding",user.cNick,"to Admins(With mode",user.cMode + ")"
+                pDebug("Adding " + user.cNick + " to Admins(With mode " + user.cMode + " )")
                 admins.append(user.cNick)
         admins.sort(key=str.lower)
         ops = []
         for user in cChannel.cUsers:
             if "@" in user.cMode:
-                print "Adding",user.cNick,"to OPs(With Mode",user.cMode + ")"
+                pDebug("Adding " + user.cNick + " to OPs(With Mode " + user.cMode + " )")
                 ops.append(user.cNick)
         ops.sort(key=str.lower)
         hops = []
         for user in cChannel.cUsers:
             if "%" in user.cMode:
-                print "Adding",user.cNick,"to HOPs"
+                pDebug("Adding " + user.cNick + " to HOPs")
                 hops.append(user.cNick)
         hops.sort(key=str.lower)
         vs = []
         for user in cChannel.cUsers:
             if "+" in user.cMode:
-                print "Adding",user.cNick,"to V"
+                pDebug("Adding " + user.cNick + " to V ")
                 vs.append(user.cNick)
         vs.sort(key=str.lower)
         others = []
         for user in cChannel.cUsers:
             if ("*" not in user.cMode and "!" not in user.cMode and "@" not in user.cMode and "%" not in user.cMode and
  "+" not in user.cMode and "~" not in user.cMode and "&" not in user.cMode):
-                print "Adding",user.cNick,"to Others(With mode",user.cMode + ")"
+                pDebug("Adding " + user.cNick + " to Others(With mode " + user.cMode + ")")
                 others.append(user.cNick)
         others.sort(key=str.lower)
 
         self.register_iconsets([("founder", sys.path[0] + "/images/Founder.png"),("admin", sys.path[0] + "/images/Admin.png"),
         ("op", sys.path[0] + "/images/op.png"),("hop", sys.path[0] + "/images/hop.png"),("voice", sys.path[0] + "/images/voice.png")])
 
-        print others,hops,ops,admins,owners
+        pDebug(others+hops+ops+admins+owners)
         #Add the Owners, to the list of users.
         for user in owners:
             for cUsr in cChannel.cUsers:
@@ -1192,33 +1185,37 @@ class MainForm:
         if cUsr.cMode == "":
             cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,None,normalChannelColor])
         else:
-            print "onUserJoin, " + cUsr.cMode
+            pDebug("onUserJoin, " + cUsr.cMode)
             if "*" in cUsr.cMode or "~" in cUsr.cMode:
-                print "*",cIndex
+                pDebug("*"+str(cIndex))
                 if noUserIcons==False:
                     cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("founder"),normalChannelColor])
                 else:
                     cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,None,normalChannelColor])
                 return
             elif "!" in cUsr.cMode or "&" in cUsr.cMode:
+                pDebug("!"+str(cIndex))
                 if noUserIcons==False:
                     cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("admin"),normalChannelColor])
                 else:
                     cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,None,normalChannelColor])
                 return
             elif "@" in cUsr.cMode:
+                pDebug("@"+str(cIndex))
                 if noUserIcons==False:
                     cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("op"),normalChannelColor])
                 else:
                     cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,None,normalChannelColor])
                 return
             elif "%" in cUsr.cMode:
+                pDebug("%"+str(cIndex))
                 if noUserIcons==False:
                     cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("hop"),normalChannelColor])
                 else:
                     cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,None,normalChannelColor])
                 return
             elif "+" in cUsr.cMode:
+                pDebug("+"+str(cIndex))
                 if noUserIcons==False:
                     cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("voice"),normalChannelColor])
                 else:
@@ -1231,28 +1228,30 @@ class MainForm:
     When a user either QUIT's ,PART's(from a channel) or is KICKed, provides the iter to remove
     """
     def onUserRemove(self,cChannel,cServer,cTreeIter,usr):
-        print "onUserRemove"
-        print cChannel.cName
+        pDebug("onUserRemove")
+        pDebug(cChannel.cName)
         if usr != None:
             cChannel.cUsers.remove(usr)
         else:
-            print "An error occured while trying to remove user from the user list, received",usr ," onUserRemove"
+            pDebug("\033[1;31mAn error occured while trying to remove user from the user list, received " + str(usr) + " onUserRemove\033[1;m")
 
         try:
             cServer.listTreeStore.remove(cTreeIter)
+            pDebug("\033[1;32mSuccesfully removed %s\033[1;m" % (str(cTreeIter)))
         except:
-            print "Error removing user from TreeStore, onUserRemove"
+            pDebug("\033[1;31mError removing user from TreeStore, onUserRemove\033[1;m")
+            import traceback;traceback.print_exc()
 
     """
     onLagChange
     When a PONG message is received with the timestamp(LAG1234567890.0)
     """
     def onLagChange(self,cResp,cServer):
-        lag=cResp[3].replace(":LAG","").replace("\r","")
+        lag=cResp[3].replace(":LAG","").replace("\r","").replace("\n","")
         import time
-        print str(time.time()) + " " + lag
+        pDebug(str(time.time()) + " " + lag)
         lagInt=time.time() - float(lag)
-        print "onLagChange " + cResp[3] + " lag = " + str(lagInt)
+        pDebug("onLagChange " + str(cResp[3].replace("\r","").replace("\n","")) + ";lag=" + str(lagInt))
         self.pingLabel.set_text(str(lagInt))
 
     """
@@ -1275,7 +1274,7 @@ class MainForm:
                 rChannel = ch
             if cResp.channel.lower().startswith("#") == False:
                 for usr in ch.cUsers:
-                    if usr.cNick == cResp.channel.lower():
+                    if usr.cNick.lower() == cResp.channel.lower():
                         rChannel = usr
 
         #If the "Channel" in the cResp is your nick, add it to the currently selected channel/server
@@ -1342,7 +1341,7 @@ class MainForm:
                     endMark=rChannel.cTextBuffer.get_end_iter()
                     startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + cResp.msg.index(i))
                     endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + (cResp.msg.index(i) + len(i)))
-                    print str(lineOffsetBAddMsg + cResp.msg.index(i)) + "--" + str(lineOffsetBAddMsg + (cResp.msg.index(i) + len(i)))
+                    pDebug(str(lineOffsetBAddMsg + cResp.msg.index(i)) + "--" + str(lineOffsetBAddMsg + (cResp.msg.index(i) + len(i))))
                     rChannel.cTextBuffer.apply_tag(fileTag,startIter,endIter)
             #File Paths END-------------------------------------------------
 
@@ -1353,9 +1352,18 @@ class MainForm:
         #If i don't do this the TextView will scroll even when you have another channel/server selected
         #which is a bit annoying
         try:
-            rChannel.cName=rChannel.cNick 
+            change=True
+            try:
+                if type(rChannel.cAddress) ==  str:
+                    change=False
+            except:
+                change=True
+
+            if change==True:
+                rChannel.cName=rChannel.cNick 
         except:
-            print "Making rChannel.cName=rChannel.cNick failed."        
+            pDebug("\033[1;40m\033[1;33mMaking rChannel.cName=rChannel.cNick failed.\033[1;m\033[1;m")
+        """----------------------"""    
 
         if newlySelected == rChannel.cName:
             #Scroll the TextView to the bottom...                                   
@@ -1364,9 +1372,13 @@ class MainForm:
 
     #||IRC Events end||#
     """---------------------------------------------"""
-
-
-
+import inspect
+debugInfo=True
+def pDebug(txt):
+    if debugInfo:
+        func = str(inspect.getframeinfo(inspect.currentframe().f_back).function)
+        filename = str(inspect.getframeinfo(inspect.currentframe().f_back).filename);filename = filename.split("/")[len(filename.split("/"))-1]
+        print "[\033[1;34m"+str(inspect.currentframe().f_back.f_lineno).rjust(3, '0')+"\033[1;m, " + filename +"(" + func + ")]\n    " + str(txt)
 
 def main():
     gtk.gdk.threads_enter()
@@ -1376,6 +1388,5 @@ def main():
 if __name__ == "__main__":
     Initialize = MainForm()
     main()
-
 
 

@@ -43,7 +43,6 @@ def pongResp(server,i):
         if "PONG":
             m=i.split(" ")
             if m[1]=="PONG":
-                print "..after"
                 for event in IRC.eventFunctions:
                     if event.eventName == "onLagChange" and event.cServer == server:
                         gobject.idle_add(event.aFunc,m,server)
@@ -63,7 +62,7 @@ def modeResp(server,i):
                         gobject.idle_add(event.aFunc,m,server)
                 try:
                     nM = mLetters(m.msg.split()[0])
-                    print nM
+                    pDebug(nM)
                     #Check if it's a users mode being changed
                     if len(m.msg.split()) > 1:
                         #Find the cTreeIter
@@ -71,7 +70,7 @@ def modeResp(server,i):
                             if ch.cName.lower() == m.channel.lower():
                                 for usr in ch.cUsers:
                                     if usr.cNick.lower() == m.msg.split()[1].lower():
-                                        print usr.cTreeIter
+                                        pDebug(str(usr.cTreeIter) + " " + usr.cNick + " " + m.msg + " " + ch.cName)
                                         cTreeIter = usr.cTreeIter
                                         for event in IRC.eventFunctions:
                                             if event.eventName == "onUserRemove" and event.cServer == server:
@@ -81,12 +80,12 @@ def modeResp(server,i):
                             if ch.cName.lower() == m.channel.lower():
                                 for usr in ch.cUsers:
                                     if usr.cNick.lower() == m.msg.split()[1].lower():
-                                        print usr.cMode
+                                        pDebug(usr.cMode)
                                         #Set the new MODE for the user.
                                         if nM.startswith("-"):
                                             for char in nM.replace("-",""):
                                                 usr.cMode = usr.cMode.replace(char,"")
-                                            print "usr.cMode = " + usr.cMode
+                                            pDebug("usr.cMode = " + usr.cMode)
                                         else:
                                             usr.cMode += nM
     
@@ -138,7 +137,7 @@ def servResp(server,i):
                 if event.eventName == "onServerMsg" and event.cServer == server:
                     gobject.idle_add(event.aFunc,datParsed,server)
     except:
-        print "Index out of range-servResp"
+        pDebug("\033[1;40m\033[1;33mIndex out of range-servResp\033[1;m\033[1;m")
 
 def numericCode():
     #Make a list of Numeric Codes...001,002,003,004,005,006,007,008,009...099
@@ -179,7 +178,27 @@ def nickResp(server,i):
                 if m.nick == server.cNick:
                     server.cNick = str(m.msg)
 
-                print "NICK----"
+                for ch in server.channels:
+                        for usr in ch.cUsers:
+                            if usr.cNick.lower() == m.nick.lower():
+                                pDebug(usr.cTreeIter)
+                                cTreeIter = usr.cTreeIter
+                                for event in IRC.eventFunctions:
+                                    if event.eventName == "onUserRemove" and event.cServer == server:
+                                        gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
+
+                for ch in server.channels:
+                        for usr in ch.cUsers:
+                            if usr.cNick.lower() == m.nick.lower():
+                                usr.cNick = m.msg
+                                cIndex = findIndex(usr,server,ch)
+                                for event in IRC.eventFunctions:
+                                    if event.eventName == "onUserJoin" and event.cServer == server:
+                                        gobject.idle_add(event.aFunc,ch,server,cIndex,usr)
+
+
+
+                pDebug("NICK----" + m.nick + " = " + m.msg)
                 for event in IRC.eventFunctions:
                     if event.eventName == "onNickChange" and event.cServer == server:
                         gobject.idle_add(event.aFunc,m,server)
@@ -201,7 +220,7 @@ def kickResp(server,i):
                         for ch in server.channels:
                             if ch.cName.lower() == m.channel.lower():
                                 for usr in ch.cUsers:
-                                    print usr.cNick.lower()
+                                    pDebug(usr.cNick.lower())
                                     cTreeIter = usr.cTreeIter
                                     ch.cUsers.remove(usr)
     
@@ -219,11 +238,10 @@ def kickResp(server,i):
                                     #totally forgot...
                                     personWhoWasKicked = m.nick.split(",")[1]
                                     
-                                    if usr.cNick.lower() == personWhoWasKicked:
-                                        print "\033[1;31mRemoving %s from %s\033[1;m" % (personWhoWasKicked,ch.cName)
+                                    if usr.cNick.lower() == personWhoWasKicked.lower():
+                                        pDebug("\033[1;32mRemoving %s from %s\033[1;m" % (personWhoWasKicked,ch.cName))
                                         cTreeIter = usr.cTreeIter
                                         ch.cUsers.remove(usr)
-    
                                         #Call the onUserRemove event
                                         for event in IRC.eventFunctions:
                                             if event.eventName == "onUserRemove" and event.cServer == server:
@@ -259,7 +277,7 @@ def userStuff(server,i):#The user list.
         for channel in server.channels:
             if channel.cName == m[0].channel:
                 #Add the users correctly.
-                print "\033[1;34m" + m[0].channel + "\033[1;m"
+                pDebug("\033[1;34m" + m[0].channel + "\033[1;m")
                 channel.cUsers = []
                 
                 for user in ResponseParser.parseUsers(USERS,server,channel):
@@ -275,10 +293,10 @@ or userF.startswith("+") or userF.startswith("~") or userF.startswith("&")):
                     #Get the nickname.
                     usr.cNick = user.replace(usr.cMode,"").replace(" ","")
                     channel.cUsers.append(usr)
-                    print "\033[1;31mAdded " + usr.cNick + " to " + channel.cName + " users list " + " with mode " + usr.cMode + "\033[1;m"
+                    pDebug("\033[1;31mAdded " + usr.cNick + " to " + channel.cName + " users list " + " with mode " + usr.cMode + "\033[1;m")
 
                 for us in channel.cUsers:                
-                    print "\033[1;32m" + us.cNick + "(Mode " + us.cMode + ")" + "\033[1;m"
+                    pDebug("\033[1;32m" + us.cNick + "(Mode " + us.cMode + ")" + "\033[1;m")
 
                 USERS = ""
 
@@ -358,7 +376,8 @@ def joinResp(server,i):#The join message
                             #Call the onUsersChange event
                             for event in IRC.eventFunctions:
                                 if event.eventName == "onUserJoin" and event.cServer == server:
-                                    gobject.idle_add(event.aFunc,ch,server,cIndex,usr)
+                                    #Set the users cTreeIter immediately
+                                    event.aFunc(ch,server,cIndex,usr) #Might couse some random SEGFAULTS!!!!!!!!!!!!!!
 
                 for event in IRC.eventFunctions:
                     if event.eventName == "onJoinMsg" and event.cServer == server:
@@ -371,7 +390,7 @@ def joinResp(server,i):#The join message
 #!--FOR JOIN(And MODE) MSG, finds the index of where to insert the new user.--!#
 def findIndex(usr,cServer,cChannel):
     if usr.cMode != "":
-        print usr.cMode
+        pDebug(usr.cMode)
         #1.Check what mode the user contains.
         cISet=False
 
@@ -425,7 +444,7 @@ def findIndex(usr,cServer,cChannel):
         oUsers.sort(key=str.lower)
         #Find the index of where the user that JOINed is.
         if "@" in usr.cMode and cISet==False:
-            print len(fUsers) + len(aUsers)
+            pDebug(len(fUsers) + len(aUsers))
             cIndex = oUsers.index(usr.cNick) + len(fUsers) + len(aUsers)
             cISet=True
         """--------------------------------------"""
@@ -480,17 +499,18 @@ def findIndex(usr,cServer,cChannel):
                 normUsers.append(cServer.listTreeStore.get_value(itr,0))
             else:
                 uNormUsrInt+=1
+                pDebug("Unnormal User adding..total:" + str(uNormUsrInt))
             itr = cServer.listTreeStore.iter_next(itr)
         #These should already be sorted alphabetically        
         #2.Add the user who JOINed, to the list.
         normUsers.append(usr.cNick)
-        print usr.cNick
+        pDebug(usr.cNick)
         #3.Sort the list
         normUsers.sort(key=str.lower)
-        print normUsers
+        pDebug(normUsers)
         #4.Find the index of where the nick that JOINed is.
-        cIndex = normUsers.index(usr.cNick) + uNormUsrInt - 1
-        print cIndex
+        cIndex = normUsers.index(usr.cNick) + uNormUsrInt
+        pDebug(cIndex)
         #5.Return the index.
         return cIndex
 
@@ -535,7 +555,7 @@ def privmsgResp(server,i):#the private msg(Normal message)
 
             #!--CTCP VERSION--!#
             if m.msg.startswith("VERSION"):
-                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 230809 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/")
+                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 290809 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/")
             #!--CTCP VERSION END--!#
             #!--CTCP TIME--!#
             if m.msg.startswith("TIME"):
@@ -579,6 +599,12 @@ def motdStuff(server,i):#MOTD stuff
 
 
 
-
+import inspect
+debugInfo=True
+def pDebug(txt):
+    if debugInfo:
+        func = str(inspect.getframeinfo(inspect.currentframe().f_back).function)
+        filename = str(inspect.getframeinfo(inspect.currentframe().f_back).filename);filename = filename.split("/")[len(filename.split("/"))-1]
+        print "[\033[1;34m"+str(inspect.currentframe().f_back.f_lineno).rjust(3, '0')+"\033[1;m, " + filename +"(" + func + ")]\n    " + str(txt)
 
 

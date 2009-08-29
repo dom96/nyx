@@ -1,0 +1,20 @@
+2009-08-29  Dominik Picheta  <dominikpicheta@googlemail.com>
+    I know this isn't correct ChangeLog format...
+
+    * Fixed some user list problems:
+    When a normal user joined, in some cases he appeared above a user with a mode.
+
+    PongStuff.py(joinResp)[Line 379], The onUserJoin event(Which adds the user that joined
+    to the TreeView) gets called instantaneously instead of using idle_add, this might couse a SEGFAULT!
+
+    * Better debug information printing.
+    
+
+2009-08-28  Dominik Picheta  <dominikpicheta@googlemail.com>
+
+    * MainForm.py (OnOwnPrivMsg): Line 1273,
+    Added .lower()
+
+    * MainForm.py (onPrivMsg): Line 485
+    Added .lower()
+

@@ -46,7 +46,7 @@ def connect(address, nick, realname,port,server):
     print "under certain conditions; look at the license for more details."    
     #License End
     #Connect to the server with a socket.
-    print "Connecting to:" + address
+    pDebug("Connecting to:" + address)
     server.cSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Make a new socket
     server.cSocket.connect((address, port)) #Connect to the server
 
@@ -66,7 +66,7 @@ def connect(address, nick, realname,port,server):
         #if event.eventName == "onServerMsg" and event.cServer == server:
             #event.aFunc(datParsed,server)
 
-    print "Sending NICK"
+    pDebug("Sending NICK")
     #Send the "NICK" command, to the server, this is the third command to be sent to the server.And last step to connect.
     server.cSocket.send('NICK ' + nick + ' \r\n') # NICK >nick< CR-LF
     #Don't wait for responses to the NICK command
@@ -78,7 +78,7 @@ def connect(address, nick, realname,port,server):
             #event.aFunc(datParsed,server)
 
 
-    print "Sending USER"
+    pDebug("Sending USER")
     #Send the "USER" command, to the server, this is the second command to be sent to the server.
     server.cSocket.send("USER " + nick + " " + nick + " " + address + " :" + realname + "\r\n") # USER >nick< >nick< >address< :>realname< CR-LF 
     #data = server.cSocket.recv(1024) #Receive the response
@@ -117,12 +117,12 @@ def pingPong(server):
             data = server.cSocket.recv(8192)
             msg += data
             if msg !="":
-                print "Raw received data from server:\n \033[1;32m" + data + " \033[1;m"
+                pDebug("Raw received data from server:\n \033[1;32m" + data + " \033[1;m")
                 if msg.startswith("PING"): #If the server sends a PING command...
-                    print "Received PING( \033[1;32m" + msg + "\033[1;m )"
+                    pDebug("Received PING( \033[1;32m" + msg + "\033[1;m )")
                     #Reply with a PONG command, to keep the connection alive.
                     server.cSocket.send("PONG :" + msg.split(":")[1] + " \r\n") 
-                    print "Replied to Ping with: \033[1;34m" + "PONG :" + msg.split(":")[1] + " \033[1;m\r\n"
+                    pDebug("Replied to Ping with: \033[1;34m" + "PONG :" + msg.split(":")[1] + " \\r\\n\033[1;m")
                     msg=""
                 else:
                     #If the message ends with \n (Carriage Return) then that means that the command is a full command
@@ -188,9 +188,9 @@ def sendMsgBuffer(server):
                     currentTime=time.time()
                     if currentTime >= msgBuff.sendTimestamp:
                         i.cMsgBuffer.remove(msgBuff)
-                        print "sendMsgBuffer, " + i.cName
+                        pDebug("sendMsgBuffer, " + i.cName)
                         IRCHelper.cmdSendMsg(server,msgBuff.dest,msgBuff.msg)
-                        print "Entries in buffer left:"+str(len(i.cMsgBuffer))
+                        pDebug("Entries in buffer left:"+str(len(i.cMsgBuffer)))
 
                         #Call all the onByteSendChange events
                         for event in eventFunctions:
@@ -250,5 +250,13 @@ class eventDef():
     aFunc=object
     cServer=server()
     eventName="" #Name of the event.
+
+import inspect
+debugInfo=True
+def pDebug(txt):
+    if debugInfo:
+        func = str(inspect.getframeinfo(inspect.currentframe().f_back).function)
+        filename = str(inspect.getframeinfo(inspect.currentframe().f_back).filename);filename = filename.split("/")[len(filename.split("/"))-1]
+        print "[\033[1;34m"+str(inspect.currentframe().f_back.f_lineno).rjust(3, '0')+"\033[1;m, " + filename +"(" + func + ")]\n    " + str(txt)
     
 

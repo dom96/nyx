@@ -77,7 +77,7 @@ def sendMsg(server,cChannel,msg,buffMsg):
                                 usrDest=usr
                     if ch.cName == cChannel or ch.cName == usrDest.cChannel.cName:
                         channel=ch       
-                        print "Setting channel to " + ch.cName
+                        pDebug("Setting channel to " + ch.cName)
 
                 #If this message is the 5th message to be sent in a row, then add >the number of sendInstantly equal to False msgBuffers< * 3
                 #(So it waits 3 times the number of non instantly sent messages, to send this message.)
@@ -137,7 +137,7 @@ def sendMsg(server,cChannel,msg,buffMsg):
                             msgBuff.sendTimestamp=time
                             msgBuff.dest=cChannel
                             ch.cMsgBuffer.append(msgBuff)
-                            print "\033[1;31mAdded to " + ch.cName
+                            pDebug("\033[1;31mAdded to " + ch.cName)
                             #Call all the onByteSendChange events
                             for event in IRC.eventFunctions:
                                 if event.eventName == "onByteSendChange" and event.cServer == server:
@@ -157,7 +157,7 @@ def sendMsg(server,cChannel,msg,buffMsg):
 
 #A cleaner one function way to send a message
 def cmdSendMsg(server,cChannel,msg):
-    print "\033[1;34mPRIVMSG " + cChannel + " :" + msg + "\\r\\n\033[1;m"
+    pDebug("\033[1;34mPRIVMSG " + cChannel + " :" + msg + "\\r\\n\033[1;m")
     server.cSocket.send("PRIVMSG " + cChannel + " :" + msg + "\r\n")
 
     cResp = ResponseParser.privMsg()
@@ -177,8 +177,13 @@ def cmdSendMsg(server,cChannel,msg):
 def sendNotice(server,cChannel,msg):
     server.cSocket.send("NOTICE " + cChannel + " :" + msg + " \r\n") 
 
-
-
+import inspect
+debugInfo=True
+def pDebug(txt):
+    if debugInfo:
+        func = str(inspect.getframeinfo(inspect.currentframe().f_back).function)
+        filename = str(inspect.getframeinfo(inspect.currentframe().f_back).filename);filename = filename.split("/")[len(filename.split("/"))-1]
+        print "[\033[1;34m"+str(inspect.currentframe().f_back.f_lineno).rjust(3, '0')+"\033[1;m, " + filename +"(" + func + ")]\n    " + str(txt)
 
 
 
