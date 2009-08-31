@@ -268,7 +268,7 @@ class MainForm:
         self.UserScrolledWindow.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
         self.HPaned2.pack2(self.UserScrolledWindow,False,True) #Resize = False Shrink = True
 
-        self.UserTreeView = gtk.TreeView(None)
+        self.UserTreeView = gtk.TreeView(UserListTreeStore)
         #Border..
         self.UserScrolledWindow.set_shadow_type(gtk.SHADOW_IN)      
 
@@ -414,7 +414,7 @@ class MainForm:
                     chatTextView.set_buffer(i.cTextBuffer)
                     pDebug("NewTextBuffer Server = " + i.cAddress)
 
-                    UserListTreeView.set_model(None)
+                    UserListTreeView.set_model(UserListTreeStore)
 
                     break
 
