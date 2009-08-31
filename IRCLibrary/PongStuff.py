@@ -93,7 +93,7 @@ def modeResp(server,i):
                                             
                                         for event in IRC.eventFunctions:
                                             if event.eventName == "onUserJoin" and event.cServer == server:
-                                                gobject.idle_add(event.aFunc,ch,server,cIndex,usr)
+                                                event.aFunc(ch,server,cIndex,usr)#Might couse some random SEGFAULTS!!!!!!!!!!!!!!
                 except:
                     traceback.print_exc()
 
@@ -133,6 +133,7 @@ def servResp(server,i):
     try:
         if (splitI[1] in numericCode() or splitI[1]+splitI[2] == "NOTICEAUTH" or "NOTICE AUTH" in m):
             datParsed = ResponseParser.parse(i,True,False)
+            pDebug("Considering this as a serverMsg: " + str(i))
             for event in IRC.eventFunctions:
                 if event.eventName == "onServerMsg" and event.cServer == server:
                     gobject.idle_add(event.aFunc,datParsed,server)
@@ -194,7 +195,7 @@ def nickResp(server,i):
                                 cIndex = findIndex(usr,server,ch)
                                 for event in IRC.eventFunctions:
                                     if event.eventName == "onUserJoin" and event.cServer == server:
-                                        gobject.idle_add(event.aFunc,ch,server,cIndex,usr)
+                                        event.aFunc(ch,server,cIndex,usr) #Might couse some random SEGFAULTS!!!!!!!!!!!!!!
 
 
 
@@ -246,9 +247,6 @@ def kickResp(server,i):
                                         for event in IRC.eventFunctions:
                                             if event.eventName == "onUserRemove" and event.cServer == server:
                                                 gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
-
-
-
 
                 except:
                     traceback.print_exc()
@@ -352,6 +350,7 @@ def joinResp(server,i):#The join message
                         nChannel = IRC.channel()
                         nChannel.cName = m.channel
                         nChannel.cTextBuffer = gtk.TextBuffer()
+                        nChannel.UserListStore = gtk.ListStore(str,str)
                         try:
                             nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.channel,None,gtk.gdk.Color(red=0,green=0,blue=0,pixel=0)])
                         except:
@@ -371,7 +370,7 @@ def joinResp(server,i):#The join message
                             try:
                                 cIndex=findIndex(usr,server,ch)
                             except:
-                                traceback.print_exc()
+                                import traceback;traceback.print_exc()
 
                             #Call the onUsersChange event
                             for event in IRC.eventFunctions:
@@ -383,9 +382,6 @@ def joinResp(server,i):#The join message
                     if event.eventName == "onJoinMsg" and event.cServer == server:
                         gobject.idle_add(event.aFunc,m,server)
 
-                
-
-
     #!--JOIN MSG END--!#
 #!--FOR JOIN(And MODE) MSG, finds the index of where to insert the new user.--!#
 def findIndex(usr,cServer,cChannel):
@@ -396,11 +392,11 @@ def findIndex(usr,cServer,cChannel):
 
         fUsers=[] #Founder Users
         #Loop through the users.
-        itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
+        itr = cChannel.UserListStore.get_iter_first()
         while itr:
-            if cServer.listTreeStore.get_value(itr, 1) == lookupIcon("founder"):
-                fUsers.append(cServer.listTreeStore.get_value(itr,0))
-            itr = cServer.listTreeStore.iter_next(itr)
+            if cChannel.UserListStore.get_value(itr, 1) == lookupIcon("founder"):
+                fUsers.append(cChannel.UserListStore.get_value(itr,0))
+            itr = cChannel.UserListStore.iter_next(itr)
         #Add the user to the list of users.
         if "*" in usr.cMode:
             fUsers.append(usr.cNick)
@@ -414,11 +410,11 @@ def findIndex(usr,cServer,cChannel):
 
         aUsers=[] #Admin Users
         #Loop through the users.
-        itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
+        itr = cChannel.UserListStore.get_iter_first()
         while itr:
-            if cServer.listTreeStore.get_value(itr, 1) == lookupIcon("admin"):
-                aUsers.append(cServer.listTreeStore.get_value(itr,0))
-            itr = cServer.listTreeStore.iter_next(itr)
+            if cChannel.UserListStore.get_value(itr, 1) == lookupIcon("admin"):
+                aUsers.append(cChannel.UserListStore.get_value(itr,0))
+            itr = cChannel.UserListStore.iter_next(itr)
         #Add the user to the list of users.
         if "!" in usr.cMode and cISet==False:
             aUsers.append(usr.cNick)
@@ -432,11 +428,11 @@ def findIndex(usr,cServer,cChannel):
 
         oUsers=[] #Operator Users
         #Loop through the users.
-        itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
+        itr = cChannel.UserListStore.get_iter_first()
         while itr:
-            if cServer.listTreeStore.get_value(itr, 1) == lookupIcon("op"):
-                oUsers.append(cServer.listTreeStore.get_value(itr,0))
-            itr = cServer.listTreeStore.iter_next(itr)
+            if cChannel.UserListStore.get_value(itr, 1) == lookupIcon("op"):
+                oUsers.append(cChannel.UserListStore.get_value(itr,0))
+            itr = cChannel.UserListStore.iter_next(itr)
         #Add the user to the list of users.
         if "@" in usr.cMode and cISet==False:
             oUsers.append(usr.cNick)
@@ -451,11 +447,11 @@ def findIndex(usr,cServer,cChannel):
         
         hUsers=[] #Half operator Users
         #Loop through the users.
-        itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
+        itr = cChannel.UserListStore.get_iter_first()
         while itr:
-            if cServer.listTreeStore.get_value(itr, 1) == lookupIcon("hop"):
-                hUsers.append(cServer.listTreeStore.get_value(itr,0))
-            itr = cServer.listTreeStore.iter_next(itr)
+            if cChannel.UserListStore.get_value(itr, 1) == lookupIcon("hop"):
+                hUsers.append(cChannel.UserListStore.get_value(itr,0))
+            itr = cChannel.UserListStore.iter_next(itr)
         #Add the user to the list of users.
         if "%" in usr.cMode and cISet==False:
             hUsers.append(usr.cNick)
@@ -469,11 +465,11 @@ def findIndex(usr,cServer,cChannel):
 
         vUsers=[] #voice Users
         #Loop through the users.
-        itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
+        itr = cChannel.UserListStore.get_iter_first()
         while itr:
-            if cServer.listTreeStore.get_value(itr, 1) == lookupIcon("voice"):
-                vUsers.append(cServer.listTreeStore.get_value(itr,0))
-            itr = cServer.listTreeStore.iter_next(itr)
+            if cChannel.UserListStore.get_value(itr, 1) == lookupIcon("voice"):
+                vUsers.append(cChannel.UserListStore.get_value(itr,0))
+            itr = cChannel.UserListStore.iter_next(itr)
         #Add the user to the list of users.
         if "+" in usr.cMode and cISet==False:
             vUsers.append(usr.cNick)
@@ -493,24 +489,23 @@ def findIndex(usr,cServer,cChannel):
         #1.Add the normal users, to a list. And the users with modes, to uNormUsers
         uNormUsrInt = 0
         normUsers=[]
-        itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
+        itr = cChannel.UserListStore.get_iter_first()
         while itr:
-            if cServer.listTreeStore.get_value(itr, 1) == None:
-                normUsers.append(cServer.listTreeStore.get_value(itr,0))
+            if cChannel.UserListStore.get_value(itr, 1) == None:
+                normUsers.append(cChannel.UserListStore.get_value(itr,0))
             else:
                 uNormUsrInt+=1
-                pDebug("Unnormal User adding..total:" + str(uNormUsrInt))
-            itr = cServer.listTreeStore.iter_next(itr)
+                pDebug("Un-normal User adding..total:" + str(uNormUsrInt))
+            itr = cChannel.UserListStore.iter_next(itr)
         #These should already be sorted alphabetically        
         #2.Add the user who JOINed, to the list.
         normUsers.append(usr.cNick)
         pDebug(usr.cNick)
         #3.Sort the list
         normUsers.sort(key=str.lower)
-        pDebug(normUsers)
         #4.Find the index of where the nick that JOINed is.
         cIndex = normUsers.index(usr.cNick) + uNormUsrInt
-        pDebug(cIndex)
+        pDebug("Normal user, cIndex=" + str(cIndex))
         #5.Return the index.
         return cIndex
 
@@ -555,7 +550,8 @@ def privmsgResp(server,i):#the private msg(Normal message)
 
             #!--CTCP VERSION--!#
             if m.msg.startswith("VERSION"):
-                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 290809 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/")
+                import platform
+                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 310809 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/ - running on " + platform.platform())
             #!--CTCP VERSION END--!#
             #!--CTCP TIME--!#
             if m.msg.startswith("TIME"):

@@ -170,8 +170,11 @@ def parseMsg(data,noUnicode):
         import re
         pDebug(data[1:])
         reMatch = re.search(":.+",data[1:])
-        m.msg = reMatch.group(0)[1:][:-1]
-    
+        try:
+            m.msg = reMatch.group(0)[1:][:-1]
+        except:
+            pDebug("\033[1;40m\033[1;33mNo match for the message\033[1;m\033[1;m")
+
     except:
         pDebug("\033[1;40m\033[1;33mError in parseMsg\033[1;m\033[1;m")
         traceback.print_exc()

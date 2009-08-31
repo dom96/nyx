@@ -165,7 +165,6 @@ def pingPong(server):
                             #!--PING MSG--!#
                             PongStuff.pongResp(server,i)
                             #!--PING MSG END--!#
-
                             #Reset the msg after parsing
                             msg=""
         except:
@@ -219,7 +218,8 @@ class channel():
     cTreeIter=gtk.TreeIter #The treeiter, for easy access of the channels iter.
     cTextBuffer=gtk.TextBuffer() #The TextBuffer, with all of the messages, said by users etc.
     cMsgBuffer=[] #A list of messages waiting to be sent(class msgBuffer())
-    
+    UserListStore=gtk.ListStore(str,str) #The liststore, for the users of this channel
+
 #A user connected to a channel.
 class user():
     cNick="" #Nick of the user.

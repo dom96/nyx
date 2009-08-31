@@ -21,6 +21,8 @@ chatTextView = gtk.TextView()#The TextView for the chat
 
 listTreeStore = gtk.TreeStore(str,str,gtk.gdk.Color)#For the list of servers,channels,users
 listTreeView = gtk.TreeView
+UserListTreeStore = gtk.ListStore(str,str)
+UserListTreeView = gtk.TreeView
 
 #Info
 serverAddr = "irc.archerseven.com"
@@ -140,6 +142,8 @@ class MainForm:
         global listTreeStore
         global listTreeView
         global serverAddr
+        global UserListTreeStore
+        global UserListTreeView
 
         #The Nyx item in the menu
         self.nyx_menu = gtk.MenuItem("_Nyx")
@@ -189,7 +193,7 @@ class MainForm:
         self.HPaned1 = gtk.HPaned()
         self.MenuVBox.pack_end(self.HPaned1)
         self.HPaned1.show()
-    
+        """TreeView(Channels/Servers) START"""
         #TreeBox - For the TreeView and Ping meter
         self.TreeVBox = gtk.VBox()
         self.HPaned1.add(self.TreeVBox)
@@ -242,6 +246,9 @@ class MainForm:
         selection = self.TreeView1.get_selection()
         selection.connect('changed', self.TreeView_OnSelectionChanged)
         self.TreeView1.connect("focus-in-event",self.TreeView_focusInEvent)
+        self.TreeView1.connect("button-press-event",self.on_treeview_button_press_event)
+        """TreeView(Channels/Servers) END""" 
+
 
         #PING measure
         self.pingLabel = gtk.Label("LAG")
@@ -253,9 +260,57 @@ class MainForm:
         self.TreeVBox.pack_start(self.queueLabel,False,False,5)
         self.queueLabel.show()
 
+        self.HPaned2 = gtk.HPaned() #HPaned between the TextView and UserTreeView
+        self.HPaned2.show()
+
+        """UserTreeView"""
+        self.UserScrolledWindow = gtk.ScrolledWindow()
+        self.UserScrolledWindow.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
+        self.HPaned2.pack2(self.UserScrolledWindow,False,True) #Resize = False Shrink = True
+
+        self.UserTreeView = gtk.TreeView(None)
+        #Border..
+        self.UserScrolledWindow.set_shadow_type(gtk.SHADOW_IN)      
+
+        self.UserScrolledWindow.add(self.UserTreeView)
+        self.UserScrolledWindow.show()
+        self.UserTreeView.show()
+
+        UserListTreeView = self.UserTreeView
+        self.HPaned2.set_position(420)
+    
+        # --All the treeView stuff...
+        self.usrTvcolumn = gtk.TreeViewColumn(None)
+        
+        #Add the column, to the treeview
+        self.UserTreeView.append_column(self.usrTvcolumn)
+        
+        self.UserTreeView.set_headers_visible(False)#Don't show the Columns....
+
+        self.usrcellpb = gtk.CellRendererPixbuf()#The renderer for images ??
+        self.usrcell = gtk.CellRendererText()#The renderer for text
+
+        self.usrTvcolumn.pack_start(self.usrcellpb, False)
+        self.usrTvcolumn.pack_start(self.usrcell, True)
+
+        # set the cell attributes to the appropriate treestore column
+        self.usrTvcolumn.set_attributes(self.usrcellpb, stock_id=1)
+        self.usrTvcolumn.set_attributes(self.usrcell, text=0,foreground_gdk=2)
+
+        #SelectionChanged signal
+        #selection = self.UserTreeView.get_selection()
+        #selection.connect('changed', self.TreeView_OnSelectionChanged)
+        #self.UserTreeView.connect("focus-in-event",self.TreeView_focusInEvent)
+        """UserTreeView END"""
+        self.HBox1 = gtk.HBox()
+        self.HBox1.pack_end(self.HPaned2)
+        self.HPaned1.add(self.HBox1)
+        self.HBox1.show()
+
+        """TextView/EntryBox"""
         #HBox - For the TextView and EntryBox
         self.VBox1 = gtk.VBox()
-        self.HPaned1.add(self.VBox1)
+        self.HPaned2.pack1(self.VBox1,True,True) #Resize = True Shrink=True
         self.VBox1.show()
         #ScrollWindows for the TextView
         self.chatScrolledWindow = gtk.ScrolledWindow()
@@ -285,11 +340,14 @@ class MainForm:
         self.chatScrolledWindow.add(self.chatTextView)
         self.chatTextView.show()
         chatTextView = self.chatTextView
+
         #EntryBox - For the speaking part
         self.chatEntry = gtk.Entry()
         self.VBox1.pack_end(self.chatEntry,False,False,5)
         self.chatEntry.connect("activate",self.chatEntry_Activate)
         self.chatEntry.show()
+        """TextView/EntryBox END"""
+
 
     def chatEntry_Activate(self,widget):
         if widget.get_text() != "":
@@ -309,7 +367,6 @@ class MainForm:
                         for usr in i.cUsers:
                             if usr.cNick == sl:
                                 dest = usr.cNick
-
 
             wText = widget.get_text()
             if wText.startswith(" "):
@@ -337,6 +394,8 @@ class MainForm:
                         servers[0].listTreeStore.set_value(i.cTreeIter,2,normalChannelColor)
                         chatTextView.set_buffer(i.cTextBuffer)
                         pDebug("NewTextBuffer Channel = " + i.cName)
+                        UserListTreeView.set_model(i.UserListStore)
+
             else:
                 NewTextBufferSelected = False #This is so it doesn't select the textbuffer of the users from another channel
                 for i in servers[0].channels:
@@ -346,6 +405,7 @@ class MainForm:
                             chatTextView.set_buffer(usr.cTextBuffer)
                             pDebug("NewTextBuffer User = " + usr.cNick + " channel = " + i.cName)
                             NewTextBufferSelected=True
+                            break
 
         else:#If the selected iter is a server
             for i in servers:
@@ -354,13 +414,51 @@ class MainForm:
                     chatTextView.set_buffer(i.cTextBuffer)
                     pDebug("NewTextBuffer Server = " + i.cAddress)
 
-        #Scroll the TextView to the bottom...                                   
+                    UserListTreeView.set_model(None)
+
+                    break
+
+        #Scroll the TextView to the bottom...
         endMark = chatTextView.get_buffer().create_mark(None, chatTextView.get_buffer().get_end_iter(), True)
         chatTextView.scroll_to_mark(endMark,0)
 
     def TreeView_focusInEvent(self,widget,event):
         pDebug("TreeView_Activated")
         self.chatEntry.grab_focus()
+    def on_treeview_button_press_event(self, treeview, event):
+        if event.button == 3:
+            x = int(event.x)
+            y = int(event.y)
+            time = event.time
+            pthinfo = treeview.get_path_at_pos(x, y)
+            if pthinfo is not None:
+                path, col, cellx, celly = pthinfo
+                treeview.grab_focus()
+                treeview.set_cursor(path, col, 0)
+                menu = gtk.Menu()
+                menu_item = gtk.MenuItem("Close")
+                menu.append(menu_item)
+                menu_item.show()
+                menu_item.connect("activate", self.closeChannelClick, path)
+                TreeIter = listTreeStore.get_iter(path)
+                TreeIterValue = listTreeStore.get_value(TreeIter,0)
+                pDebug(TreeIterValue)
+
+                if TreeIterValue.startswith("#"):
+                    menu.popup(None, None, None, event.button, time)
+            return 1
+    def closeChannelClick(self, widget, path):
+        TreeIter = listTreeStore.get_iter(path)
+        TreeIterValue = listTreeStore.get_value(TreeIter,0)
+        TreeIterColor = listTreeStore.get_value(TreeIter,2)
+        for ch in servers[0].channels:
+            if ch.cName == TreeIterValue:
+                servers[0].channels.remove(ch)
+                break
+        listTreeStore.remove(TreeIter)
+        if TreeIterColor == normalChannelColor: #TODO: have to change the color of the channel when the user PARTs it.
+            servers[0].cSocket.send("PART " + TreeIterValue + " :Leaving\r\n")
+        
 
     #||IRC Events||#
     """
@@ -459,7 +557,7 @@ class MainForm:
             cServer.listTreeStore.set_value(destTxtBuff.cTreeIter,2,statusChannelColor)
     """
     onPrivMsg
-    When a PRIV message is received, this includes an ACTION message.
+    When a PRIV message is received, this includes an ACTION message.(And CTCP)
     """
     def onPrivMsg(self,cResp,cServer):#When a normal msg is received and parsed.
         global timeTagColor
@@ -678,7 +776,18 @@ class MainForm:
 
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," -->" + " ",nickTag)
-        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick + " has joined " + cResp.channel + "\n",successTag)
+        #If your NOT the one joining 
+        if cResp.nick != cServer.cNick:
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick + " has joined " + cResp.channel + "\n",successTag)
+        #If your the one joining        
+        else:
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"You have joined " + cResp.channel + "\n",successTag)
+            #Expand the server TreeIter
+            serverIterPath = cServer.listTreeStore.get_path(cServer.cTreeIter)
+            listTreeView.expand_row(serverIterPath,False)
+            #Select the channel TreeIter
+            selection = listTreeView.get_selection()
+            selection.select_iter(rChannel.cTreeIter)
 
         #Get the selected iter
         model, selected = listTreeView.get_selection().get_selected()
@@ -778,7 +887,7 @@ class MainForm:
 
         if cResp.nick == cServer.cNick:
             for usr in rChannel.cUsers:
-                cServer.listTreeStore.remove(usr.cTreeIter)
+                rChannel.UserListStore.remove(usr.cTreeIter)
             
             rChannel.cUsers = []
 
@@ -1046,10 +1155,10 @@ class MainForm:
         # + = Voice
                 
         #Clear the users in the treeview
-        itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
-        while itr:
-            cServer.listTreeStore.remove(itr)
-            itr = cServer.listTreeStore.iter_next(itr)
+        #itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
+        #while itr:
+            #cServer.listTreeStore.remove(itr)
+            #itr = cServer.listTreeStore.iter_next(itr)
 
         #Sort the users.
         owners = []
@@ -1098,53 +1207,53 @@ class MainForm:
         for user in owners:
             for cUsr in cChannel.cUsers:
                 if cUsr.cNick == user:
-                    if self.itrContainsString(cUsr.cNick,cServer.listTreeStore.iter_children(cChannel.cTreeIter),cServer.listTreeStore) == False:
+                    if self.itrContainsString(cUsr.cNick,cChannel.UserListStore.iter_children(cChannel.cTreeIter),cChannel.UserListStore) == False:
                         if noUserIcons==False:
-                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,self.lookupIcon("founder"),normalChannelColor])
+                            cUsr.cTreeIter = cChannel.UserListStore.append([user,self.lookupIcon("founder")])
                         else:
-                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,None,normalChannelColor])
+                            cUsr.cTreeIter = cChannel.UserListStore.append([user,None])
         #Add the admins, to the list of users
         for user in admins:
             for cUsr in cChannel.cUsers:
                 if cUsr.cNick == user:
-                    if self.itrContainsString(cUsr.cNick,cServer.listTreeStore.iter_children(cChannel.cTreeIter),cServer.listTreeStore) == False:
+                    if self.itrContainsString(cUsr.cNick,cChannel.UserListStore.iter_children(cChannel.cTreeIter),cChannel.UserListStore) == False:
                         if noUserIcons==False:
-                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,self.lookupIcon("admin"),normalChannelColor])
+                            cUsr.cTreeIter = cChannel.UserListStore.append([user,self.lookupIcon("admin")])
                         else:
-                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,None,normalChannelColor])
+                            cUsr.cTreeIter = cChannel.UserListStore.append([user,None])
         #Add the operators, to the list of users
         for user in ops:
             for cUsr in cChannel.cUsers:
                 if cUsr.cNick == user:
-                    if self.itrContainsString(cUsr.cNick,cServer.listTreeStore.iter_children(cChannel.cTreeIter),cServer.listTreeStore) == False:
+                    if self.itrContainsString(cUsr.cNick,cChannel.UserListStore.iter_children(cChannel.cTreeIter),cChannel.UserListStore) == False:
                         if noUserIcons==False:
-                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,self.lookupIcon("op"),normalChannelColor])
+                            cUsr.cTreeIter = cChannel.UserListStore.append([user,self.lookupIcon("op")])
                         else:
-                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,None,normalChannelColor])
+                            cUsr.cTreeIter = cChannel.UserListStore.append([user,None])
         #Add the half operators, to the list of users
         for user in hops:
             for cUsr in cChannel.cUsers:
                 if cUsr.cNick == user:
-                    if self.itrContainsString(cUsr.cNick,cServer.listTreeStore.iter_children(cChannel.cTreeIter),cServer.listTreeStore) == False:
+                    if self.itrContainsString(cUsr.cNick,cChannel.UserListStore.iter_children(cChannel.cTreeIter),cChannel.UserListStore) == False:
                         if noUserIcons==False:
-                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,self.lookupIcon("hop"),normalChannelColor])
+                            cUsr.cTreeIter = cChannel.UserListStore.append([user,self.lookupIcon("hop")])
                         else:
-                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,None,normalChannelColor])
+                            cUsr.cTreeIter = cChannel.UserListStore.append([user,None])
         #Add the voices, to the list of users
         for user in vs:
             for cUsr in cChannel.cUsers:
                 if cUsr.cNick == user:
-                    if self.itrContainsString(cUsr.cNick,cServer.listTreeStore.iter_children(cChannel.cTreeIter),cServer.listTreeStore) == False:
+                    if self.itrContainsString(cUsr.cNick,cChannel.UserListStore.iter_children(cChannel.cTreeIter),cChannel.UserListStore) == False:
                         if noUserIcons==False:
-                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,self.lookupIcon("voice"),normalChannelColor])
+                            cUsr.cTreeIter = cChannel.UserListStore.append([user,self.lookupIcon("voice")])
                         else:
-                            cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,None,normalChannelColor])
+                            cUsr.cTreeIter = cChannel.UserListStore.append([user,None])
         #Add the rest, to the list of users
         for user in others:
             for cUsr in cChannel.cUsers:
                 if cUsr.cNick == user:
-                    if self.itrContainsString(cUsr.cNick,cServer.listTreeStore.iter_children(cChannel.cTreeIter),cServer.listTreeStore) == False:
-                        cUsr.cTreeIter = cServer.listTreeStore.append(cChannel.cTreeIter,[user,None,normalChannelColor])
+                    if self.itrContainsString(cUsr.cNick,cChannel.UserListStore.iter_children(cChannel.cTreeIter),cChannel.UserListStore) == False:
+                        cUsr.cTreeIter = cChannel.UserListStore.append([user,None])
 
 
     def itrContainsString(self,string,itr,treestore):
@@ -1183,43 +1292,50 @@ class MainForm:
     """
     def onUserJoin(self,cChannel,cServer,cIndex,cUsr):
         if cUsr.cMode == "":
-            cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,None,normalChannelColor])
+            try:
+                cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,None])
+            except:
+                import traceback;traceback.print_exc()
         else:
             pDebug("onUserJoin, " + cUsr.cMode)
             if "*" in cUsr.cMode or "~" in cUsr.cMode:
                 pDebug("*"+str(cIndex))
                 if noUserIcons==False:
-                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("founder"),normalChannelColor])
+                    cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,self.lookupIcon("founder")])
                 else:
-                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,None,normalChannelColor])
+                    cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,None])
                 return
             elif "!" in cUsr.cMode or "&" in cUsr.cMode:
                 pDebug("!"+str(cIndex))
                 if noUserIcons==False:
-                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("admin"),normalChannelColor])
+                    cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,self.lookupIcon("admin")])
                 else:
-                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,None,normalChannelColor])
+                    cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,None])
                 return
             elif "@" in cUsr.cMode:
                 pDebug("@"+str(cIndex))
                 if noUserIcons==False:
-                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("op"),normalChannelColor])
+                    cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,self.lookupIcon("op")])
                 else:
-                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,None,normalChannelColor])
+                    cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,None])
                 return
             elif "%" in cUsr.cMode:
                 pDebug("%"+str(cIndex))
                 if noUserIcons==False:
-                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("hop"),normalChannelColor])
+                    cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,self.lookupIcon("hop")])
                 else:
-                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,None,normalChannelColor])
+                    cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,None])
                 return
             elif "+" in cUsr.cMode:
                 pDebug("+"+str(cIndex))
                 if noUserIcons==False:
-                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,self.lookupIcon("voice"),normalChannelColor])
+                    try:
+                        cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,self.lookupIcon("voice")])
+                    except:
+                        import traceback;traceback.print_exc()
+
                 else:
-                    cUsr.cTreeIter = cServer.listTreeStore.insert(cChannel.cTreeIter,cIndex,[cUsr.cNick,None,normalChannelColor])
+                    cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,None])
                 return
 
 
@@ -1236,7 +1352,7 @@ class MainForm:
             pDebug("\033[1;31mAn error occured while trying to remove user from the user list, received " + str(usr) + " onUserRemove\033[1;m")
 
         try:
-            cServer.listTreeStore.remove(cTreeIter)
+            cChannel.UserListStore.remove(cTreeIter)
             pDebug("\033[1;32mSuccesfully removed %s\033[1;m" % (str(cTreeIter)))
         except:
             pDebug("\033[1;31mError removing user from TreeStore, onUserRemove\033[1;m")

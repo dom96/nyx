@@ -1,5 +1,18 @@
+I know this isn't correct ChangeLog format...
+2009-08-31  Dominik Picheta  <dominikpicheta@googlemail.com>
+
+    * The UserList is now located on the right, instead of merged with the left TreeView.
+      There is a peculiar GTKWarning which i don't know how to get rid of, it doesn't seem to couse any problems but might in some cases
+      (It only shows the first time anything is added to the ListStore)
+    * Added a way to close channels
+
+2009-08-30  Dominik Picheta  <dominikpicheta@googlemail.com>
+
+    * When joining a channel that channel gets automatically selected,
+      and also it says "You have joined #channel"
+
 2009-08-29  Dominik Picheta  <dominikpicheta@googlemail.com>
-    I know this isn't correct ChangeLog format...
+
 
     * Fixed some user list problems:
     When a normal user joined, in some cases he appeared above a user with a mode.
