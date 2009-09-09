@@ -57,6 +57,17 @@ def entryBoxCheck(text,server,listTreeView):
 
         IRCHelper.sendMsg(server,cSelected,"ACTION " + text[4:] + "",False)
         return True
+    
+    if text.startswith("/exec"):
+        from IRCLibrary import ResponseParser
+        import commands
+        output = commands.getoutput(text[5:])
+        #Get the selected channel
+        model, selected = listTreeView.get_selection().get_selected()
+        cSelected = server.listTreeStore.get_value(selected, 0)
+        IRCHelper.sendMsg(server,cSelected,output,False)
+        return True
+
 
     if text.startswith("/") and text.startswith("//") == False:
         server.cSocket.send(text.replace("/","") + "\r\n")

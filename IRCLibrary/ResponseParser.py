@@ -95,14 +95,29 @@ def parseServer(data):
                         m.code = splitI[0]
                         m.nick = splitI[1]
                         hSplitI=1
-                
+                    #---------------------------------------------------Get the MSG
                     count=0
                     for i in splitI:
                         #Add all the parts of the message, to the m.msg
                         if count > hSplitI:
-                            m.msg = m.msg + " " + i
+                            if m.msg != "":
+                                m.msg = m.msg + " " + i
+                            else:
+                                if i[1:] == ":":
+                                    m.msg = i[1:]
+                                else:
+                                    m.msg = i
                         count=count+1
-                
+                    #--------------------------------------------------Get the MSG END
+
+
+                    #import re
+                    #pDebug(data[1:])
+                    #reMatch = re.search(":.+",data[1:])
+                    #try:
+                        #m.msg = reMatch.group(0)[1:][:-1]
+                    #except:
+                        #pDebug("\033[1;40m\033[1;33mNo match for the message\033[1;m\033[1;m")                
                     mList.append(m)
         except:
             #traceback.print_exc()
@@ -110,6 +125,32 @@ def parseServer(data):
 
 
     return mList
+
+def parseServerRegex(data):
+    mList = []
+    splitData = string.split(data,"\n")
+    for i in splitData:
+        m = serverMsg()
+
+        import re
+        reMatch = re.search("(^:.+?\s)(.+?\s)(.+?\s)(.+?\s)(.+)",i)
+
+        try:
+            m.server = reMatch.group(1)[:-1];pDebug("m.server="+m.server)
+            m.code = reMatch.group(2)[:-1];pDebug("m.code="+m.code)
+            m.nick = reMatch.group(3)[:-1];pDebug("m.nick="+m.nick)
+            m.channel = reMatch.group(4)[:-1];pDebug("m.channel=" + m.channel)
+            m.msg = reMatch.group(5)[:-1]
+            if m.msg[:1] == ":":
+                m.msg = m.msg[1:]
+            pDebug("m.msg=" + m.msg)
+        except:
+            pDebug("\033[1;40m\033[1;33mNo match for the response\033[1;m\033[1;m")
+        mList.append(m)
+
+    return mList
+
+
 
 #I'm forced to do this, the MOTD needs a seperate parser, a one that retains spaces.
 def parseMOTD(data):
@@ -156,8 +197,15 @@ def parseMsg(data,noUnicode):
         msgInt = 2
         #print splitMsg
         m = privMsg()
-        m.nick = string.strip(string.split(splitMsg[0],"!")[0],":")
-        m.host = string.strip(string.split(splitMsg[0],"!")[1],":")
+        try:
+            m.nick = string.strip(string.split(splitMsg[0],"!")[0],":")
+            m.host = string.strip(string.split(splitMsg[0],"!")[1],":")
+        except:
+            if splitMsg[0].startswith(":"):
+                m.nick = splitMsg[0][1:]
+            else:
+                m.nick = splitMsg[0]
+
         m.typeMsg = string.strip(splitMsg[1],":")
         try:
             m.channel = string.strip(splitMsg[2],":").replace(" ","")        
@@ -168,7 +216,7 @@ def parseMsg(data,noUnicode):
             msgInt = msgInt - 1
 
         import re
-        pDebug(data[1:])
+        #pDebug(data[1:])
         reMatch = re.search(":.+",data[1:])
         try:
             m.msg = reMatch.group(0)[1:][:-1]

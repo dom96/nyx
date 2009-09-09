@@ -1,4 +1,14 @@
 I know this isn't correct ChangeLog format...
+2009-09-09  Dominik Picheta  <dominikpicheta@googlemail.com>
+
+    * KICK message, user list fix.
+
+2009-08-31  Dominik Picheta  <dominikpicheta@googlemail.com>
+
+    * UserList bug fixes
+    * channel Topics are now shown
+    * Nick change bug fix
+
 2009-08-31  Dominik Picheta  <dominikpicheta@googlemail.com>
 
     * The UserList is now located on the right, instead of merged with the left TreeView.

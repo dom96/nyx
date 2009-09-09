@@ -37,6 +37,38 @@ USERS = ""
 MOTDStarted = False
 MOTD = ""
 
+def topicStuff(server,i):
+    #:irc.archerseven.com 332 Nyx28 #Nyx :The Nyx channel
+    #:dom96!dom96@maddogsoftware.co.uk TOPIC #ogame :This is the ogame channel, talk about ogame battles and look for ogame help here....
+    #:irc.archerseven.com 333 Nyx28 #ogame dom96 1252250064
+    msgCode=i.split(" ")[1]
+
+    if msgCode == "332":
+        datParsed = ResponseParser.parseServerRegex(i)[0]
+        for ch in server.channels:
+            if ch.cName == datParsed.channel:
+                ch.cTopic = datParsed.msg
+
+        for event in IRC.eventFunctions:
+            if event.eventName == "onTopicChange" and event.cServer == server:
+                gobject.idle_add(event.aFunc,datParsed,server)
+    elif msgCode == "333":
+        datParsed = ResponseParser.parseServerRegex(i)[0]
+        for event in IRC.eventFunctions:
+            if event.eventName == "onTopicChange" and event.cServer == server:
+                gobject.idle_add(event.aFunc,datParsed,server)
+
+    elif "TOPIC" in i:
+        m = ResponseParser.parseMsg(i,False)
+
+        if m.typeMsg == "TOPIC":
+            for ch in server.channels:
+                if ch.cName == m.channel:
+                    ch.cTopic = m.msg
+            for event in IRC.eventFunctions:
+                if event.eventName == "onTopicChange" and event.cServer == server:
+                    gobject.idle_add(event.aFunc,m,server)
+
 def pongResp(server,i):
     #:irc.archerseven.com PONG irc.archerseven.com :LAG1250452847.82
     try:
@@ -215,38 +247,23 @@ def kickResp(server,i):
                         gobject.idle_add(event.aFunc,m,server)
 
                 try:
-                    #Delete all the users, if the user who was kicked is you.
-                    if m.nick.split(",")[1] == server.cNick:
-                        #Delete all the users.
-                        for ch in server.channels:
-                            if ch.cName.lower() == m.channel.lower():
-                                for usr in ch.cUsers:
-                                    pDebug(usr.cNick.lower())
+                    #Delete the user who got kicked.
+                    for ch in server.channels:
+                        if ch.cName.lower() == m.channel.lower():
+                            for usr in ch.cUsers:
+                                    
+                                #m.nick is the nick that got kicked and the nick who kicked the user
+                                #totally forgot...
+                                personWhoWasKicked = m.nick.split(",")[1]
+                                    
+                                if usr.cNick.lower() == personWhoWasKicked.lower():
+                                    pDebug("\033[1;32mRemoving %s from %s\033[1;m" % (personWhoWasKicked,ch.cName))
                                     cTreeIter = usr.cTreeIter
                                     ch.cUsers.remove(usr)
-    
                                     #Call the onUserRemove event
                                     for event in IRC.eventFunctions:
                                         if event.eventName == "onUserRemove" and event.cServer == server:
                                             gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
-                    else:
-                        #Delete the user who got kicked.
-                        for ch in server.channels:
-                            if ch.cName.lower() == m.channel.lower():
-                                for usr in ch.cUsers:
-                                    
-                                    #m.nick is the nick that got kicked and the nick who kicked the user
-                                    #totally forgot...
-                                    personWhoWasKicked = m.nick.split(",")[1]
-                                    
-                                    if usr.cNick.lower() == personWhoWasKicked.lower():
-                                        pDebug("\033[1;32mRemoving %s from %s\033[1;m" % (personWhoWasKicked,ch.cName))
-                                        cTreeIter = usr.cTreeIter
-                                        ch.cUsers.remove(usr)
-                                        #Call the onUserRemove event
-                                        for event in IRC.eventFunctions:
-                                            if event.eventName == "onUserRemove" and event.cServer == server:
-                                                gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
 
                 except:
                     traceback.print_exc()
@@ -264,12 +281,14 @@ def noticeResp(server,i):
 
 def userStuff(server,i):#The user list.
     global USERS
+
+    msgCode = i.split(" ")[1]
     #!--USERS STUFF--!#
-    if ("353" in i and "PRIVMSG" not in i and "NOTICE" not in i):
+    if ("353" == msgCode):
         if i.startswith(":"):
             USERS += "\n"
             USERS += i
-    if ("366" in i and "PRIVMSG" not in i and "NOTICE" not in i):
+    if ("366" == msgCode):
         USERS += i
         m = ResponseParser.parseServer(i)
         for channel in server.channels:
@@ -312,7 +331,8 @@ def quitResp(server,i):#The quit message
         m = ResponseParser.parseMsg(i,False)
         if m is not False:
             #Make sure it's a QUIT msg.
-            if m.typeMsg == "QUIT":
+            #:Dredd!Dredd@admin.ikey.dynalias.com KILL gnome|nyx :ikey!admin.ikey.dynalias.com!Dredd (die whore)
+            if m.typeMsg == "QUIT" or "KILL":
                 for event in IRC.eventFunctions:
                     if event.eventName == "onQuitMsg" and event.cServer == server:
                         gobject.idle_add(event.aFunc,m,server)
@@ -398,12 +418,12 @@ def findIndex(usr,cServer,cChannel):
                 fUsers.append(cChannel.UserListStore.get_value(itr,0))
             itr = cChannel.UserListStore.iter_next(itr)
         #Add the user to the list of users.
-        if "*" in usr.cMode:
+        if "*" in usr.cMode or "~" in usr.cMode:
             fUsers.append(usr.cNick)
         #Sort the list
         fUsers.sort(key=str.lower)
         #Find the index of where the user that JOINed is.
-        if "*" in usr.cMode:
+        if "*" in usr.cMode or "~" in usr.cMode:
             cIndex = fUsers.index(usr.cNick)
             cISet=True
         """--------------------------------------"""
@@ -416,12 +436,12 @@ def findIndex(usr,cServer,cChannel):
                 aUsers.append(cChannel.UserListStore.get_value(itr,0))
             itr = cChannel.UserListStore.iter_next(itr)
         #Add the user to the list of users.
-        if "!" in usr.cMode and cISet==False:
+        if "!" in usr.cMode or "&" in usr.cMode and cISet==False:
             aUsers.append(usr.cNick)
         #Sort the list
         aUsers.sort(key=str.lower)
         #Find the index of where the user that JOINed is.
-        if "!" in usr.cMode and cISet==False:
+        if "!" in usr.cMode or "&" in usr.cMode and cISet==False:
             cIndex = aUsers.index(usr.cNick) + len(fUsers)
             cISet=True
         """--------------------------------------"""
@@ -527,19 +547,19 @@ def partResp(server,i):#The part message
                 for event in IRC.eventFunctions:
                     if event.eventName == "onPartMsg" and event.cServer == server:
                         gobject.idle_add(event.aFunc,m,server)
-
-                #Delete the user from the list of users.
-                for ch in server.channels:
-                    if ch.cName.lower() == m.channel.lower():
-                        for usr in ch.cUsers:
-                            if usr.cNick.lower()==m.nick.lower():
-                                cTreeIter = usr.cTreeIter #The TreeIter in the TreeStore to remove.
-                                ch.cUsers.remove(usr)
-
-                                #Call the onUserRemove event, which will remove the user from the TreeStore
-                                for event in IRC.eventFunctions:
-                                    if event.eventName == "onUserRemove" and event.cServer == server:
-                                        gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
+                if m.nick.lower() != server.cNick.lower():
+                    #Delete the user from the list of users.
+                    for ch in server.channels:
+                        if ch.cName.lower() == m.channel.lower():
+                            for usr in ch.cUsers:
+                                if usr.cNick.lower()==m.nick.lower():
+                                    cTreeIter = usr.cTreeIter #The TreeIter in the TreeStore to remove.
+                                    ch.cUsers.remove(usr)
+    
+                                    #Call the onUserRemove event, which will remove the user from the TreeStore
+                                    for event in IRC.eventFunctions:
+                                        if event.eventName == "onUserRemove" and event.cServer == server:
+                                            gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
 
     #!--PART MSG END--!#
 def privmsgResp(server,i):#the private msg(Normal message)
@@ -547,11 +567,11 @@ def privmsgResp(server,i):#the private msg(Normal message)
     if "PRIVMSG" in i:
         m = ResponseParser.parseMsg(i,False)
         if m is not False:
-
+            pDebug(m.msg)
             #!--CTCP VERSION--!#
             if m.msg.startswith("VERSION"):
                 import platform
-                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 310809 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/ - running on " + platform.platform())
+                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 080909 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/ - running on " + platform.platform())
             #!--CTCP VERSION END--!#
             #!--CTCP TIME--!#
             if m.msg.startswith("TIME"):
@@ -573,20 +593,26 @@ def motdStuff(server,i):#MOTD stuff
     global MOTDStarted
     global MOTD    
     
+    msgCode = i.split(" ")[1]
+
     #!--MOTD STUFF--!#
-    if ("375" in i and "PRIVMSG" not in i and "NOTICE" not in i): #MOTD Start code, now i need to add the whole MOTD to a one string until the MOTD END(376)
+    #MOTD Start code, now i need to add the whole MOTD to one string until the MOTD END(376)
+    if ("375" == msgCode): 
         MOTDStarted = True
-    elif ("376" in i and "PRIVMSG" not in i and "NOTICE" not in i):#Make sure it's a 376 message and that the message doesn't contain PRIVMSG or NOTICE, couse if the PRIVMSG or notice contains 376 it's gonna print the MOTD again
+    #Make sure it's a 376 message and that the message doesn't contain PRIVMSG or NOTICE, 
+    #couse if the PRIVMSG or notice contains 376 it's gonna print the MOTD again
+    elif ("376" == msgCode):
         MOTDStarted = False
         MOTD += "\n" + i
         pResp = ResponseParser.parse(MOTD,True,True)
+        server.cMotd = pResp
         #Call all the onMotdMsg events
         for event in IRC.eventFunctions:
             if event.eventName == "onMotdMsg" and event.cServer == server:
                 gobject.idle_add(event.aFunc,pResp,server)
 
-    #If MOTD is started and the code is 372, add the motd to the MOTD string.                        
-    if MOTDStarted == True:
+    #If MOTD is started (--and the code is 372--), add the motd to the MOTD string.                        
+    if MOTDStarted == True and msgCode == "372":
         if i.startswith(":"):
             MOTD += "\n"                                
         MOTD += i

@@ -118,17 +118,19 @@ def pingPong(server):
             msg += data
             if msg !="":
                 pDebug("Raw received data from server:\n \033[1;32m" + data + " \033[1;m")
-                if msg.startswith("PING"): #If the server sends a PING command...
-                    pDebug("Received PING( \033[1;32m" + msg + "\033[1;m )")
-                    #Reply with a PONG command, to keep the connection alive.
-                    server.cSocket.send("PONG :" + msg.split(":")[1] + " \r\n") 
-                    pDebug("Replied to Ping with: \033[1;34m" + "PONG :" + msg.split(":")[1] + " \\r\\n\033[1;m")
-                    msg=""
-                else:
-                    #If the message ends with \n (Carriage Return) then that means that the command is a full command
-                    #If not then that means that the last line of msg is a uncompletely received command. 
-                    if msg.endswith("\n"):
-                        for i in string.split(msg,"\n"):
+
+                #If the message ends with \n (Carriage Return) then that means that the command is a full command
+                #If not then that means that the last line of msg is a uncompletely received command. 
+                if msg.endswith("\n"):
+                    for i in string.split(msg,"\n"):
+                        if i.startswith("PING"): #If the server sends a PING command...
+                            pingMsg = i.replace("\n","").replace("\r","")
+                            pDebug("Received PING( \033[1;32m" + pingMsg + "\033[1;m )")
+                            #Reply with a PONG command, to keep the connection alive.
+                            server.cSocket.send("PONG :" + pingMsg.split(":")[1] + "\r\n") 
+                            pDebug("Replied to Ping with: \033[1;34m" + "PONG :" + pingMsg.split(":")[1] + "\\r\\n\033[1;m")
+                            msg=""
+                        else:
                             #!--MOTD STUFF--!#
                             PongStuff.motdStuff(server,i)
                             #!--MOTD STUFF END--!#
@@ -165,6 +167,10 @@ def pingPong(server):
                             #!--PING MSG--!#
                             PongStuff.pongResp(server,i)
                             #!--PING MSG END--!#
+                            #!--TOPIC MSG--!#
+                            PongStuff.topicStuff(server,i)
+                            #!--TOPIC MSG END--!#
+
                             #Reset the msg after parsing
                             msg=""
         except:
@@ -174,7 +180,8 @@ def pingPong(server):
 def pingServer(server):
     while(True):
         import time
-        server.cSocket.send("PING LAG" + str(time.time()) + "\r\n")
+        if server.cMotd != None:
+            server.cSocket.send("PING LAG" + str(time.time()) + "\r\n")
         time.sleep(15)
 
 def sendMsgBuffer(server):
@@ -204,6 +211,7 @@ class server():
     cRealname="" #The Real name that is being used on this server.
     cPort=0 #The port being used, on this server.
     cName="" #Name of this server.
+    cMotd=None #The MOTD Message
     cSocket=socket.socket(socket.AF_INET, socket.SOCK_STREAM) #The socket being used by this server.
     cTextBuffer=gtk.TextBuffer() #The TextBuffer, with the server messages.
     channels=[] #A List of channel(), these are all of the channels currently connected on his server.

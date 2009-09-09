@@ -116,13 +116,14 @@ class MainForm:
         IRC.connectEvent("onLagChange",self.onLagChange,self.nServer)     
         IRC.connectEvent("onByteSendChange",self.onByteSendChange,self.nServer)
         IRC.connectEvent("onOwnPrivMsg",self.onOwnPrivMsg,self.nServer)
+        IRC.connectEvent("onTopicChange",self.onTopicChange,self.nServer)
 
         #Start a new a connection to a server(Multi threaded)
         gtk.gdk.threads_enter()
         thread.start_new(IRC.connect,(serverAddr,nickname,"NyxIRC",port,self.nServer))
         gtk.gdk.threads_leave()
         
-    def delete_event(self, widget, event, data=None):
+    def delete_event(self, widget, event=None, data=None):
         servers[0].cSocket.send("QUIT :" + "Nyx IRC Client, visit http://sourceforge.net/projects/nyxirc/\r\n")
         gtk.main_quit()
         return False
@@ -145,21 +146,52 @@ class MainForm:
         global UserListTreeStore
         global UserListTreeView
 
+        self.nyx_menu_menu = gtk.Menu()
+        #The exit item in the nyx item
+        self.exit_menu_item = gtk.ImageMenuItem(gtk.STOCK_QUIT,"Exit")
+        self.exit_menu_item.get_children()[0].set_label("_Exit")
+        self.exit_menu_item.connect("activate",self.delete_event)
+        self.nyx_menu_menu.append(self.exit_menu_item)
+        self.exit_menu_item.show()
+
         #The Nyx item in the menu
         self.nyx_menu = gtk.MenuItem("_Nyx")
         self.nyx_menu.show()
+        self.nyx_menu.set_submenu(self.nyx_menu_menu)
         """----------------------------------"""
         #The View item in the menu
         self.view_menu = gtk.MenuItem("_View")
         self.view_menu.show()
         """----------------------------------"""
+       
+        self.server_menu_menu = gtk.Menu()    
+        #The disconnect item in the Server item
+        self.disconnect_menu_item = gtk.ImageMenuItem(gtk.STOCK_DISCONNECT,"Disconnect")
+        self.disconnect_menu_item.connect("activate",lambda x: servers[0].cSocket.send("QUIT :" + "Nyx IRC Client, visit http://sourceforge.net/projects/nyxirc/\r\n"))
+        self.server_menu_menu.append(self.disconnect_menu_item)
+        self.disconnect_menu_item.show()
+
+        #The reconnect item in the Server item   
+        self.reconnect_menu_item = gtk.ImageMenuItem(gtk.STOCK_CONNECT,"Reconnect")
+        self.reconnect_menu_item.get_children()[0].set_label("_Reconnect")
+        self.server_menu_menu.append(self.reconnect_menu_item)
+        self.reconnect_menu_item.show()
+
         #The Server item in the menu
         self.server_menu = gtk.MenuItem("_Server")
         self.server_menu.show()
+        self.server_menu.set_submenu(self.server_menu_menu)
         """----------------------------------"""
+        #The preferences item in the tools item
+        self.preferences_menu = gtk.Menu()    
+        self.preferences_menu_item = gtk.ImageMenuItem(gtk.STOCK_PREFERENCES,"Preferences")    
+        self.preferences_menu.append(self.preferences_menu_item)
+        self.preferences_menu_item.show()
+
         #The Tools item in the menu
         self.tools_menu = gtk.MenuItem("_Tools")
         self.tools_menu.show()
+        self.tools_menu.set_submenu(self.preferences_menu)
         """----------------------------------"""
         #The About item in the help item
         self.about_menu = gtk.Menu()    
@@ -249,7 +281,6 @@ class MainForm:
         self.TreeView1.connect("button-press-event",self.on_treeview_button_press_event)
         """TreeView(Channels/Servers) END""" 
 
-
         #PING measure
         self.pingLabel = gtk.Label("LAG")
         self.TreeVBox.pack_start(self.pingLabel,False,False,5)
@@ -307,11 +338,16 @@ class MainForm:
         self.HPaned1.add(self.HBox1)
         self.HBox1.show()
 
-        """TextView/EntryBox"""
+        """TextView/EntryBox(For typing)/TopicEntryBox"""
         #HBox - For the TextView and EntryBox
         self.VBox1 = gtk.VBox()
         self.HPaned2.pack1(self.VBox1,True,True) #Resize = True Shrink=True
         self.VBox1.show()
+        #TopicEntryBox
+        self.TopicEntryBox = gtk.Entry()
+        self.VBox1.pack_start(self.TopicEntryBox,False,False,5)
+        self.TopicEntryBox.show()
+
         #ScrollWindows for the TextView
         self.chatScrolledWindow = gtk.ScrolledWindow()
         self.chatScrolledWindow.set_policy(gtk.POLICY_AUTOMATIC,gtk.POLICY_AUTOMATIC)
@@ -332,7 +368,7 @@ class MainForm:
         #Borders
         self.chatTextView.set_border_window_size(gtk.TEXT_WINDOW_LEFT,1)
         self.chatTextView.set_border_window_size(gtk.TEXT_WINDOW_RIGHT,1)
-        #self.chatTextView.set_border_window_size(gtk.TEXT_WINDOW_TOP,1)
+        self.chatTextView.set_border_window_size(gtk.TEXT_WINDOW_TOP,1)
         self.chatTextView.set_border_window_size(gtk.TEXT_WINDOW_BOTTOM,1)
         #Borders-Color
         self.chatTextView.modify_bg(gtk.STATE_NORMAL,gtk.gdk.Color(red=124 * 257,green=124 * 257 ,blue=124 * 257,pixel=0))
@@ -346,7 +382,7 @@ class MainForm:
         self.VBox1.pack_end(self.chatEntry,False,False,5)
         self.chatEntry.connect("activate",self.chatEntry_Activate)
         self.chatEntry.show()
-        """TextView/EntryBox END"""
+        """TextView/EntryBox/TopicEntryBox END"""
 
 
     def chatEntry_Activate(self,widget):
@@ -395,6 +431,8 @@ class MainForm:
                         chatTextView.set_buffer(i.cTextBuffer)
                         pDebug("NewTextBuffer Channel = " + i.cName)
                         UserListTreeView.set_model(i.UserListStore)
+                        pDebug(i.cTopic)
+                        self.TopicEntryBox.set_text(i.cTopic)
 
             else:
                 NewTextBufferSelected = False #This is so it doesn't select the textbuffer of the users from another channel
@@ -415,6 +453,7 @@ class MainForm:
                     pDebug("NewTextBuffer Server = " + i.cAddress)
 
                     UserListTreeView.set_model(UserListTreeStore)
+                    self.TopicEntryBox.set_text("")
 
                     break
 
@@ -567,10 +606,9 @@ class MainForm:
             if ch.cName.lower() == cResp.channel.lower():
                 rChannel = ch
 
-
         #If the "Channel" in the cResp is your nick, add it to the currently selected channel/server
         if cResp.channel.lower() == cServer.cNick.lower():
-            #Get the server first, this way if the selected chanel isn't found it's not gonna generate an exception
+            #Get the server first, this way if the selected channel isn't found it's not gonna generate an exception
             rChannel = cServer
             #Get the selected iter
             model, selected = listTreeView.get_selection().get_selected()
@@ -578,10 +616,6 @@ class MainForm:
             for ch in cServer.channels:
                 if ch.cName.lower() == treeiterSelected.lower():
                     rChannel = ch
-                if cResp.channel.lower().startswith("#") == False:
-                    for usr in ch.cUsers:
-                        if usr.cNick.lower() == cResp.nick.lower():
-                            rChannel = usr
 
         nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
         timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey 
@@ -606,6 +640,7 @@ class MainForm:
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"!",nickTag)
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"<",highlightTag)
             rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter()," Received CTCP " + cResp.msg.replace("","") + " from " + cResp.nick + "\n")
+            pDebug(rChannel)
             colorToUse = statusChannelColor #Set the correct color for the TreeIter
         else:
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
@@ -885,10 +920,10 @@ class MainForm:
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," <--" + " ",nickTag)
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick + " has left " + cResp.channel + " (" + cResp.msg + ")" + "\n",partTag)
 
-        if cResp.nick == cServer.cNick:
+        if cResp.nick.lower() == cServer.cNick.lower():
+            pDebug("The user who parted is you, removing all the users...")
             for usr in rChannel.cUsers:
                 rChannel.UserListStore.remove(usr.cTreeIter)
-            
             rChannel.cUsers = []
 
 
@@ -990,6 +1025,13 @@ class MainForm:
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),personWhoKicked,nickTag)
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," has kicked " + personWhoWasKicked + "(" + cResp.msg[1:] + ")\n",highlightTag)
 
+        #Remove the users from the TreeView
+        if cResp.nick.split(",")[1].lower() == cServer.cNick.lower():
+            pDebug("The person who got kicked is you, removing all the users from the channels userlist")
+            for usr in rChannel.cUsers:
+                rChannel.UserListStore.remove(usr.cTreeIter)
+            rChannel.cUsers = []
+
         #Get the selected iter
         model, selected = listTreeView.get_selection().get_selected()
         newlySelected = listTreeStore.get_value(selected, 0)
@@ -1016,20 +1058,25 @@ class MainForm:
         global nickTagColor
         global timeTagColor
         global nickname
-        pDebug("OnNickChange")
-        #Get the textbuffer for the right channel.
-        for ch in cServer.channels:
-            if ch.cName.lower() == cResp.msg.lower():
-                rChannel = ch
-       
+        global highlightTagColor
 
-        try:
+        pDebug("OnNickChange")
+        try:#If a channel isn't selected...
+            #Get the textbuffer for the right channel.
+            for ch in cServer.channels:
+                for usr in ch.cUsers:
+                    if usr.cNick.lower() == cResp.msg.lower():
+                        rChannel = ch
+
             nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
             timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey    
-            partTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=partTagColor)#Green
+            highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=highlightTagColor)#Green
+            partTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=partTagColor)#Dark Blue
 
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
-            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >!<" + " ",nickTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >",highlightTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"!",nickTag)
+            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"<" + " ",highlightTag)
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick + " is now known as " + cResp.msg + "\n",partTag)
 
             #Get the selected iter
@@ -1045,51 +1092,30 @@ class MainForm:
             else:
                 cServer.listTreeStore.set_value(rChannel.cTreeIter,2,statusChannelColor) #Set the channels this message was sent to, TreeIter color.
 
-            #Search for the user and change his name.
-            for user in rChannel.cUsers:
-                if user.cNick == cResp.nick:
-                    cServer.listTreeStore.set_value(user.cTreeIter,0,cResp.msg)    
-                    user.cNick = cResp.msg
         except:
-            #Every server does this, it doesn't give you the channel the person QUIT on, 
-            #so i have to check if the person who QUIT is in any of the channels that i'm on, and notify the user on the correct channel.
-            for ch in cServer.channels:
-                for user in ch.cUsers:
-                    if cResp.nick.lower() in user.cNick.lower():                        
-                        rChannel = ch
+            import traceback;traceback.print_exc()
+            partTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=partTagColor)#Dark Blue
 
-                        nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
-                        timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey    
-                        partTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=partTagColor)#Green
+            cServer.cTextBuffer.insert_with_tags_by_name(cServer.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),"timeTag")
+            cServer.cTextBuffer.insert_with_tags_by_name(cServer.cTextBuffer.get_end_iter()," >","highlightTag")
+            cServer.cTextBuffer.insert_with_tags_by_name(cServer.cTextBuffer.get_end_iter(),"!","nickTag")  
+            cServer.cTextBuffer.insert_with_tags_by_name(cServer.cTextBuffer.get_end_iter(),"<" + " ","highlightTag")   
+            cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),cResp.nick + " is now known as " + cResp.msg + "\n",partTag)
 
-                        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
-                        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >!<" + " ",nickTag)
-                        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick + " is now known as " + cResp.msg + "\n",partTag)
+            #Get the selected iter
+            model, selected = listTreeView.get_selection().get_selected()
+            newlySelected = listTreeStore.get_value(selected, 0)
+            #Check to see if this server is selected, and scroll the TextView if it is.
+            #If i don't do this the TextView will scroll even when you have another channel/server selected
+            #which is a bit annoying
+            if newlySelected == cServer.cName:
+                #Scroll the TextView to the bottom...                                   
+                endMark = cServer.cTextBuffer.create_mark(None, cServer.cTextBuffer.get_end_iter(), True)
+                chatTextView.scroll_to_mark(endMark,0)
+            else:
+                cServer.listTreeStore.set_value(rChannel.cTreeIter,2,statusChannelColor) #Set the channels this message was sent to, TreeIter color.
 
-                        #Get the selected iter
-                        model, selected = listTreeView.get_selection().get_selected()
-                        newlySelected = listTreeStore.get_value(selected, 0)
-                        #Check to see if this channel is selected, and scroll the TextView if it is.
-                        #If i don't do this the TextView will scroll even when you have another channel/server selected
-                        #which is a bit annoying
-                        if newlySelected == rChannel.cName:
-                            #Scroll the TextView to the bottom...                                   
-                            endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
-                            chatTextView.scroll_to_mark(endMark,0)
-                        else:
-                            cServer.listTreeStore.set_value(rChannel.cTreeIter,2,statusChannelColor) #Set the channels this message was sent to, TreeIter color.
-
-                        #Search for the user and change his name.(in the treeview)
-                        for user in rChannel.cUsers:
-                            if user.cNick.lower() == cResp.nick.lower():
-                                pDebug("Setting-" + cResp.msg)
-                                #pDebug(str(rChannel.cTreeIter) + str(user.cTreeIter))
-                                #pDebug("USER =" + str(cServer.listTreeStore.get_value(user.cTreeIter,0)))
-                                #cServer.listTreeStore.set_value(user.cTreeIter,0,cResp.msg)                        
-                                #user.cNick = cResp.msg
-
-
-                        #Search the name in the Users
+        
     """
     onModeChange
     When a user changes his/her/someones MODE 
@@ -1281,10 +1307,14 @@ class MainForm:
 
     #Looks up an icon in the stock list
     def lookupIcon(self,icon):
-        stock_ids = gtk.stock_list_ids()
-        for stock in stock_ids:
-            if stock == icon:
-                return stock
+        try:
+            stock_ids = gtk.stock_list_ids()
+            for stock in stock_ids:
+                if stock == icon:
+                    return stock
+        except:
+            pDebug("Error Looking up icon")
+            return None
 
     """
     onUserJoin
@@ -1480,11 +1510,68 @@ class MainForm:
         except:
             pDebug("\033[1;40m\033[1;33mMaking rChannel.cName=rChannel.cNick failed.\033[1;m\033[1;m")
         """----------------------"""    
-
+        
         if newlySelected == rChannel.cName:
             #Scroll the TextView to the bottom...                                   
             endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
             chatTextView.scroll_to_mark(endMark,0)
+    """
+    onTopicChange
+    When a channels topic changes
+    """
+    def onTopicChange(self,cResp,cServer):
+        global partTagColor
+        global nickTagColor
+        global timeTagColor
+        #Get the textbuffer for the right channel.
+        for ch in cServer.channels:
+            if ch.cName.lower() == cResp.channel.lower():
+                rChannel = ch
+
+        try:
+            cResp.msgType = cResp.code
+        except:
+            pDebug("\033[1;40m\033[1;33mMaking cResp.msgType = cResp.code failed\033[1;m\033[1;m") 
+
+        #Change the topic in the TopicEntryBox, if the code is not 333
+        pDebug(cResp.msgType)
+        if cResp.msgType != "333":
+            self.TopicEntryBox.set_text(cResp.msg)
+
+        nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=nickTagColor)#Blue-ish
+        timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey    
+        highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=highlightTagColor)#Red
+
+        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
+        #>!<
+        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >",highlightTag)
+        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"!",nickTag)
+        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"< ",highlightTag)
+       
+
+        if cResp.msgType != "333":
+            if cResp.nick != cServer.cNick:
+                rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter(),cResp.nick + " has changed the topic on " + cResp.channel + " to: " + cResp.msg + "\n")
+            else:
+                rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter(),"Topic on " + cResp.channel + " is: " + cResp.msg + "\n")
+        else:
+            import time
+            t = time.strftime("%a, %d %b %Y %H:%M:%S %Z",time.gmtime(int(cResp.msg.split(" ")[1])))
+            rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter(),"Topic on " + cResp.channel + " was set by " + cResp.msg.split(" ")[0] + " on " + t + "\n")
+
+
+        #Get the selected iter
+        model, selected = listTreeView.get_selection().get_selected()
+        newlySelected = listTreeStore.get_value(selected, 0)
+        #Check to see if this channel is selected, and scroll the TextView if it is.
+        #If i don't do this the TextView will scroll even when you have another channel/server selected
+        #which is a bit annoying
+        if newlySelected == rChannel.cName:
+            #Scroll the TextView to the bottom...                                   
+            endMark = rChannel.cTextBuffer.create_mark(None, rChannel.cTextBuffer.get_end_iter(), True)
+            chatTextView.scroll_to_mark(endMark,0)
+        else:
+            cServer.listTreeStore.set_value(rChannel.cTreeIter,2,statusChannelColor) #Set the channels this message was sent to, TreeIter color.
 
     #||IRC Events end||#
     """---------------------------------------------"""

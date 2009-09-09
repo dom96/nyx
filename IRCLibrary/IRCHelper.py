@@ -175,6 +175,7 @@ def cmdSendMsg(server,cChannel,msg):
 
 #sendNotice, Sends a NOTICE to the channel specified.
 def sendNotice(server,cChannel,msg):
+    pDebug("\033[1;34mNOTICE " + cChannel + " :" + msg + "\\r\\n\033[1;m")
     server.cSocket.send("NOTICE " + cChannel + " :" + msg + " \r\n") 
 
 import inspect
