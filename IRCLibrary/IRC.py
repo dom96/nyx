@@ -38,17 +38,35 @@ eventFunctions = [] #A list of all the connected events(eventDef() class)
 #Connects to a server(Starts everything)
 #Address=string,nick=string,realname=string,port=integer,server=server class,queue()
 
-def connect(address, nick, realname,port,server):
+def connect(server):
     #License....
     print "IRCLibrary Copyright (C) 2009 Mad Dog Software"
     print "This program comes with ABSOLUTELY NO WARRANTY."
     print "This is free software, and you are welcome to redistribute it"
     print "under certain conditions; look at the license for more details."    
     #License End
+    if server.addresses[0].cSsl==True:
+        try:
+            import ssl
+        except:
+            pDebug("ERROR!!! NO SSL FOUND")
+
     #Connect to the server with a socket.
-    pDebug("Connecting to:" + address)
-    server.cSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Make a new socket
-    server.cSocket.connect((address, port)) #Connect to the server
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Make a new socket
+
+    if server.addresses[0].cSsl==True:
+        server.cSocket = ssl.wrap_socket(s)
+    else:
+        server.cSocket = s
+    pDebug("Connecting to:" + server.addresses[0].cAddress + " on port " + str(server.addresses[0].cPort))
+    try:
+        server.cSocket.connect((server.addresses[0].cAddress, server.addresses[0].cPort)) #Connect to the server
+        server.connected=True
+        server.cAddress=server.addresses[0].cAddress
+    except Exception as err:
+        pDebug("\033[1;31m" + str(err) + "\033[1;m")
+        return
 
     #Start the while loop, in another thread, so that i can return the server.
     gtk.gdk.threads_enter()
@@ -67,8 +85,9 @@ def connect(address, nick, realname,port,server):
             #event.aFunc(datParsed,server)
 
     pDebug("Sending NICK")
+    pDebug("\033[1;34mNICK " + server.cNick + "\\r\\n\033[1;m")
     #Send the "NICK" command, to the server, this is the third command to be sent to the server.And last step to connect.
-    server.cSocket.send('NICK ' + nick + ' \r\n') # NICK >nick< CR-LF
+    server.cSocket.send('NICK ' + server.cNick + ' \r\n') # NICK >nick< CR-LF
     #Don't wait for responses to the NICK command
     #data = server.cSocket.recv(1024) #Receive the response
     #print data
@@ -79,8 +98,10 @@ def connect(address, nick, realname,port,server):
 
 
     pDebug("Sending USER")
+    pDebug("\033[1;34mUSER " + server.cNick + " " + server.cNick + " " + server.addresses[0].cAddress + " :" + server.cRealname + "\\r\\n\033[1;m")
     #Send the "USER" command, to the server, this is the second command to be sent to the server.
-    server.cSocket.send("USER " + nick + " " + nick + " " + address + " :" + realname + "\r\n") # USER >nick< >nick< >address< :>realname< CR-LF 
+    # USER >nick< >nick< >address< :>realname< CR-LF
+    server.cSocket.send("USER " + server.cNick + " " + server.cNick + " " + server.addresses[0].cAddress + " :" + server.cRealname + "\r\n")  
     #data = server.cSocket.recv(1024) #Receive the response
     #print data
     #datParsed = ResponseParser.parse(data,True,False)
@@ -88,21 +109,9 @@ def connect(address, nick, realname,port,server):
         #if event.eventName == "onServerMsg" and event.cServer == server:
             #event.aFunc(datParsed,server)
 
-    #Add all the info of the server.
-    server.cAddress = address
-    server.cNick = nick
-    server.cRealname = realname
-    server.cPort = port
-    server.cName = address
-
-
-    gtk.gdk.threads_enter()
     thread.start_new(pingServer,(server,))
-    gtk.gdk.threads_leave()
 
-    gtk.gdk.threads_enter()
     thread.start_new(sendMsgBuffer,(server,))
-    gtk.gdk.threads_leave()
 
 def pingPong(server):
     MOTDStarted = False
@@ -112,7 +121,7 @@ def pingPong(server):
     USERS=""
 
     msg = ""
-    while(True):
+    while server.connected:
         try:
             data = server.cSocket.recv(8192)
             msg += data
@@ -120,7 +129,8 @@ def pingPong(server):
                 pDebug("Raw received data from server:\n \033[1;32m" + data + " \033[1;m")
 
                 #If the message ends with \n (Carriage Return) then that means that the command is a full command
-                #If not then that means that the last line of msg is a uncompletely received command. 
+                #If not then that means that the last line of msg is a uncompletely received command,
+                #Which means i have to wait, for the rest of the command before parsing.
                 if msg.endswith("\n"):
                     for i in string.split(msg,"\n"):
                         if i.startswith("PING"): #If the server sends a PING command...
@@ -170,22 +180,32 @@ def pingPong(server):
                             #!--TOPIC MSG--!#
                             PongStuff.topicStuff(server,i)
                             #!--TOPIC MSG END--!#
+                            #!--Channel Mode Change MSG--#!
+                            PongStuff.channelModeStuff(server,i)
+                            #!--Channel Mode Change MSG END--#!
 
                             #Reset the msg after parsing
                             msg=""
-        except:
-            pass
+            #If msg==""
+            else:
+                pDebug(data)
+                if data=="":
+                    pDebug("\033[1;31mServer closed connection\033[1;m")
+                    server.connected=False
+
+        except Exception as err:
+            pDebug("\033[1;40m\033[1;33m" + str(err) + "\033[1;m\033[1;m")
             #traceback.print_exc()   
 
 def pingServer(server):
-    while(True):
+    while server.connected:
         import time
         if server.cMotd != None:
             server.cSocket.send("PING LAG" + str(time.time()) + "\r\n")
         time.sleep(15)
 
 def sendMsgBuffer(server):
-    while(True):
+    while server.connected:
         import time
         time.sleep(1)
         for i in server.channels:
@@ -206,21 +226,33 @@ def sendMsgBuffer(server):
 
 #A connection to a server
 class server():
-    cAddress="" #The address of this server.
+    addresses=[] #The list of addresses, i.e when your unable to connect to the first server, cycle to the next one...
+    cAddress="" #Current address(When connected)
     cNick="" #The nick that is used on this server.
     cRealname="" #The Real name that is being used on this server.
-    cPort=0 #The port being used, on this server.
     cName="" #Name of this server.
     cMotd=None #The MOTD Message
+    connected=False #If this server instance is connected.
     cSocket=socket.socket(socket.AF_INET, socket.SOCK_STREAM) #The socket being used by this server.
-    cTextBuffer=gtk.TextBuffer() #The TextBuffer, with the server messages.
+
     channels=[] #A List of channel(), these are all of the channels currently connected on his server.
+
+    cTextBuffer=gtk.TextBuffer() #The TextBuffer, with the server messages.
     listTreeStore=gtk.TreeStore #The treestore, for easy access
     cTreeIter=gtk.TreeIter #The treeiter, for easy access of the servers iter.
+
+    settings=object
+
+    listTreeView = gtk.TreeView #TreeView with the channels and servers 
+    UserListTreeView = gtk.TreeView #ListView with the users
+    chatTextView = object #TextView for the chat
+
+    w = object #The Window....gah this is gonna take up a shitload of memory
 
 #A channel connection, on a server.
 class channel():
     cName="" #Name of this channel, e.g:#channel
+    cMode="" #The mode of this channel, e.g: +ntr
     cTopic="" #The topic of this channel. e.g:"All ubuntu fans here|Obey the ops"
     cUsers=[] #A list of users(Class user()) in this channel.(Get's updated every nickchange, exit,part,join,modechange and i think that's it...)
     cTreeIter=gtk.TreeIter #The treeiter, for easy access of the channels iter.

@@ -32,7 +32,7 @@ def entryBoxCheck(text,server,listTreeView):
 
     """NEED TO MAKE THIS IN A SEPERATE FILE, ALL THE CTCP STUFF."""
     if text.startswith("/version"):
-        IRCHelper.sendMsg(server,text.replace("/version ",""),"\x01VERSION\x01",False)
+        IRCHelper.sendMsg(server,text.replace("/version ",""),"\x01VERSION\x01")
         #PRIVMSG dom96 :VERSION
         return True
     if text.startswith("/ctcp"):
@@ -40,7 +40,7 @@ def entryBoxCheck(text,server,listTreeView):
         try:
             to=splitText[0]#dom96 for example
             ctcp=splitText[1]#VERSION for example
-            IRCHelper.sendMsg(server,to,"\x01" + ctcp + "\x01",False)
+            IRCHelper.sendMsg(server,to,"\x01" + ctcp + "\x01")
         except:
             pass
         return True
@@ -55,7 +55,7 @@ def entryBoxCheck(text,server,listTreeView):
         cSelected = server.listTreeStore.get_value(selected, 0)            
         fakecResp.channel=cSelected
 
-        IRCHelper.sendMsg(server,cSelected,"ACTION " + text[4:] + "",False)
+        IRCHelper.sendMsg(server,cSelected,"ACTION " + text[4:] + "")
         return True
     
     if text.startswith("/exec"):
@@ -65,7 +65,7 @@ def entryBoxCheck(text,server,listTreeView):
         #Get the selected channel
         model, selected = listTreeView.get_selection().get_selected()
         cSelected = server.listTreeStore.get_value(selected, 0)
-        IRCHelper.sendMsg(server,cSelected,output,False)
+        IRCHelper.sendMsg(server,cSelected,output)
         return True
 
 

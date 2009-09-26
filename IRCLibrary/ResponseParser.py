@@ -185,7 +185,7 @@ def parseMOTD(data):
     return mList
 
 #Parses PRIVMSG
-def parseMsg(data,noUnicode):
+def parseMsg(data,noUnicode=False):
     #:ikey!~hserver@my.fancy.host PRIVMSG vIRC :VERSION
     try:
     # :dom96!~dom96@SpotChat-12E750B3.range86-131.btcentralplus.com PRIVMSG #geek :k
@@ -221,7 +221,11 @@ def parseMsg(data,noUnicode):
         try:
             m.msg = reMatch.group(0)[1:][:-1]
         except:
-            pDebug("\033[1;40m\033[1;33mNo match for the message\033[1;m\033[1;m")
+            reMatch = re.search("(.+?)\s(.+?)\s(.+)",data[1:])
+            try:
+                m.msg = reMatch.group(3)[:-1]
+            except:
+                pDebug("\033[1;40m\033[1;33mNo match for the message\033[1;m\033[1;m")
 
     except:
         pDebug("\033[1;40m\033[1;33mError in parseMsg\033[1;m\033[1;m")
@@ -300,13 +304,22 @@ def parseKick(data):
         m.channel = string.strip(splitMsg[2],":").replace(" ","")
         m.nick += "," + splitMsg[3]
 
+        import re
+        #pDebug(data[1:])
+        reMatch = re.search(":.+",data[1:])
+        try:
+            m.msg = reMatch.group(0)[1:][:-1]
+        except:
+            pDebug("\033[1;40m\033[1;33mNo match for the KICK message\033[1;m\033[1;m")
+
+        """
         for i in range(len(splitMsg)):
             if i > msgInt:
                 if i != msgInt+1:
                     m.msg += unicode(splitMsg[i], 'utf-8') + " "
                 elif i == msgInt+1 and splitMsg[i].startswith(":"):
                     m.msg += unicode(splitMsg[i][1:], 'utf-8') + " "
-    
+    """
     except:
         traceback.print_exc()
         return False  

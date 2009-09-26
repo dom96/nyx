@@ -3,6 +3,6 @@ NYX TODO List
 --Users tab autocomplete.
 ----Users tab autocomplete shows list of possible users, if for example there are two users Areg and Acoustic and you type A<TAB> it shows a list of Areg And Acoustic.
 --Different colored Nicks(DONE)
---Private Message with a user - Almost done, if a user isn't in any of the channels and he PM's you, make a new "Channel level" TreeIter, and then when that user joins the channel or you join a channel with the user there it has to merge
+--Private Message with a user - Make a new "channel" for the actual convo with the user
 
 

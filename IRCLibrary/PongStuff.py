@@ -37,6 +37,28 @@ USERS = ""
 MOTDStarted = False
 MOTD = ""
 
+def channelModeStuff(server,i):
+    #:irc.archerseven.com 324 Nyx22 #ogame +nt
+    #:irc.archerseven.com 329 Nyx22 #ogame 1253286530
+    msgCode=i.split(" ")[1]
+    
+    if msgCode=="324":
+        datParsed = ResponseParser.parseServerRegex(i)[0]
+        for ch in server.channels:
+            if ch.cName == datParsed.channel:
+                ch.cMode = datParsed.msg
+
+        for event in IRC.eventFunctions:
+            if event.eventName == "onChannelModeChange" and event.cServer == server:
+                gobject.idle_add(event.aFunc,datParsed,server)
+    if msgCode=="329":
+        datParsed = ResponseParser.parseServerRegex(i)[0]
+
+        for event in IRC.eventFunctions:
+            if event.eventName == "onChannelModeChange" and event.cServer == server:
+                gobject.idle_add(event.aFunc,datParsed,server)
+
+
 def topicStuff(server,i):
     #:irc.archerseven.com 332 Nyx28 #Nyx :The Nyx channel
     #:dom96!dom96@maddogsoftware.co.uk TOPIC #ogame :This is the ogame channel, talk about ogame battles and look for ogame help here....
@@ -94,38 +116,54 @@ def modeResp(server,i):
                         gobject.idle_add(event.aFunc,m,server)
                 try:
                     nM = mLetters(m.msg.split()[0])
-                    pDebug(nM)
+                    pDebug("Mode(Channel format)=" + nM)
+                    usersWhoModeChanged=m.msg.replace(m.msg.split()[0] + " ","").split(" ")
+
                     #Check if it's a users mode being changed
-                    if len(m.msg.split()) > 1:
+                    if len(m.msg.split()) >= 2:
                         #Find the cTreeIter
                         for ch in server.channels:
                             if ch.cName.lower() == m.channel.lower():
                                 for usr in ch.cUsers:
-                                    if usr.cNick.lower() == m.msg.split()[1].lower():
-                                        pDebug(str(usr.cTreeIter) + " " + usr.cNick + " " + m.msg + " " + ch.cName)
-                                        cTreeIter = usr.cTreeIter
-                                        for event in IRC.eventFunctions:
-                                            if event.eventName == "onUserRemove" and event.cServer == server:
-                                                gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
+                                    for usrWMChange in usersWhoModeChanged:
+                                        if usr.cNick.lower() == usrWMChange.lower():
+                                            #And remove it(Because i have to change the position of it anyway)
+                                            pDebug(str(usr.cTreeIter) + " " + usr.cNick + " " + m.msg + " " + ch.cName)
+                                            cTreeIter = usr.cTreeIter
+                                            for event in IRC.eventFunctions:
+                                                if event.eventName == "onUserRemove" and event.cServer == server:
+                                                    gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
 
                         for ch in server.channels:
                             if ch.cName.lower() == m.channel.lower():
                                 for usr in ch.cUsers:
-                                    if usr.cNick.lower() == m.msg.split()[1].lower():
-                                        pDebug(usr.cMode)
-                                        #Set the new MODE for the user.
-                                        if nM.startswith("-"):
-                                            for char in nM.replace("-",""):
-                                                usr.cMode = usr.cMode.replace(char,"")
-                                            pDebug("usr.cMode = " + usr.cMode)
-                                        else:
-                                            usr.cMode += nM
+                                    for usrWMChange in usersWhoModeChanged:
+                                        if usr.cNick.lower() == usrWMChange.lower():
+                                            pDebug(usr.cMode)
+                                            #Set the new MODE for the user.
+                                            if nM.startswith("-"):
+                                                for char in nM.replace("-",""):
+                                                    usr.cMode = usr.cMode.replace(char,"")
+                                                pDebug("usr.cMode = " + usr.cMode)
+                                            else:
+                                                usr.cMode += nM
     
-                                        cIndex = findIndex(usr,server,ch)
+                                            cIndex = findIndex(usr,server,ch)
                                             
-                                        for event in IRC.eventFunctions:
-                                            if event.eventName == "onUserJoin" and event.cServer == server:
-                                                event.aFunc(ch,server,cIndex,usr)#Might couse some random SEGFAULTS!!!!!!!!!!!!!!
+                                            for event in IRC.eventFunctions:
+                                                if event.eventName == "onUserJoin" and event.cServer == server:
+                                                    event.aFunc(ch,server,cIndex,usr)#Might couse some random SEGFAULTS!!!!!!!!!!!!!!
+                    #If it's not a user's mode being changed...It's most like a channels mode
+                    else:
+                        for ch in server.channels:
+                            if ch.cName == m.channel:
+                                #If the msg contains a -(Minus) then remove the mode from this channels cMode
+                                if m.msg.startswith("-"):
+                                    ch.cMode = ch.cMode.replace(m.msg.replace("-",""),"")
+                                #If the msg has a +(plus) then append the mode to this channels cMode
+                                else:
+                                    ch.cMode += m.msg.replace("+","")
+
                 except:
                     traceback.print_exc()
 
@@ -165,7 +203,7 @@ def servResp(server,i):
     try:
         if (splitI[1] in numericCode() or splitI[1]+splitI[2] == "NOTICEAUTH" or "NOTICE AUTH" in m):
             datParsed = ResponseParser.parse(i,True,False)
-            pDebug("Considering this as a serverMsg: " + str(i))
+            #pDebug("Considering this as a serverMsg: " + str(i))
             for event in IRC.eventFunctions:
                 if event.eventName == "onServerMsg" and event.cServer == server:
                     gobject.idle_add(event.aFunc,datParsed,server)
@@ -228,8 +266,6 @@ def nickResp(server,i):
                                 for event in IRC.eventFunctions:
                                     if event.eventName == "onUserJoin" and event.cServer == server:
                                         event.aFunc(ch,server,cIndex,usr) #Might couse some random SEGFAULTS!!!!!!!!!!!!!!
-
-
 
                 pDebug("NICK----" + m.nick + " = " + m.msg)
                 for event in IRC.eventFunctions:
@@ -310,7 +346,7 @@ or userF.startswith("+") or userF.startswith("~") or userF.startswith("&")):
                     #Get the nickname.
                     usr.cNick = user.replace(usr.cMode,"").replace(" ","")
                     channel.cUsers.append(usr)
-                    pDebug("\033[1;31mAdded " + usr.cNick + " to " + channel.cName + " users list " + " with mode " + usr.cMode + "\033[1;m")
+                    pDebug("\033[1;32mAdded " + usr.cNick + " to " + channel.cName + " users list " + " with mode " + usr.cMode + "\033[1;m")
 
                 for us in channel.cUsers:                
                     pDebug("\033[1;32m" + us.cNick + "(Mode " + us.cMode + ")" + "\033[1;m")
@@ -359,6 +395,7 @@ def joinResp(server,i):#The join message
         if m is not False:
             #Make sure it's a JOIN msg.
             if m.typeMsg == "JOIN":
+                #If it's you that JOINed
                 if m.nick == server.cNick:
                     addNewUser=True
 
@@ -378,6 +415,10 @@ def joinResp(server,i):#The join message
                         nChannel.cMsgBuffer = [] #This fixes the weird problem with the queue being in the wrong channel.
                         #Add the newly JOINed channel to the Servers channel list
                         server.channels.append(nChannel)
+
+                    #Send the MODE message, to ask for the MODE of the channel.
+                    server.cSocket.send("MODE " + m.channel + "\r\n")
+                    server.cSocket.send("WHO " + m.channel + "\r\n")
                 else:
                     #Add the user who JOINed to the list of users
                     for ch in server.channels:
@@ -571,12 +612,12 @@ def privmsgResp(server,i):#the private msg(Normal message)
             #!--CTCP VERSION--!#
             if m.msg.startswith("VERSION"):
                 import platform
-                IRCHelper.sendNotice(server,m.nick,"Nyx 0.1 Revision 080909 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/ - running on " + platform.platform())
+                IRCHelper.sendNotice(server,m.nick,"VERSION Nyx 0.1 Revision 260909 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/ - running on " + platform.platform() + "")
             #!--CTCP VERSION END--!#
             #!--CTCP TIME--!#
             if m.msg.startswith("TIME"):
-                IRCHelper.sendNotice(server,m.nick,strftime("%b %d %H:%M:%S %Z", localtime()))
-                #Aug 02 12:56:09 BST
+                IRCHelper.sendNotice(server,m.nick,"TIME " + strftime("%b %d %H:%M:%S %Z", localtime()) + "")
+                #TIME Aug 02 12:56:09 BST
             #!--CTCP TIME END--!#
             #!--CTCP PING--!#
             if m.msg.startswith("PING"):

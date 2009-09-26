@@ -31,8 +31,8 @@ import gobject
 #JOIN, Joins a channel.
 def join(server,cChannel,listTreeStore):
     server.cSocket.send("JOIN " + cChannel + "\r\n")
-#sendMsg, Sends a PRIVMSG(message) to the channel specified.
-def sendMsg(server,cChannel,msg,buffMsg):
+#sendMsg, checks if the message is bigger then 400 characters or contains newlines and sends it immediately or adds it to the msgBuffer
+def sendMsg(server,cChannel,msg):
     if "\n" in msg or len(msg) > 400:
         #If there are new lines in the msg
         if "\n" in msg:
@@ -112,48 +112,36 @@ def sendMsg(server,cChannel,msg,buffMsg):
                         usrDest=usr
 
             if ch.cName == cChannel or ch.cName == usrDest.cChannel.cName:
-                #If it's not a message originating from IRC.sendMsgBuffer
-                if buffMsg == False:
-                    #If the msgBuffer(msg queue) has no messages waiting to be sent, send this message right now.
-                    if len(ch.cMsgBuffer) == 0:
-                        cmdSendMsg(server,cChannel,msg)
-                        break
-                    #If the msgBuffer(msg queue) has messages waiting, add this new message to the end of the queue.
-                    else:
-                        import time
-                        instantMsg=False #If this is set to true the message won't be added to the msg buffer.
-                        #If this message is the 5th message to be sent in a row, then add >the number of sendInstantly equal to False msgBuffers< * 3
-                        #(So it waits 3 times the number of non instantly sent messages, to send this message.)
-                        if len(ch.cMsgBuffer) >= 5:
-                            time=time.time() + (3*(len(ch.cMsgBuffer)+1))
-                        #Else, this is a message to be sent instantly.
-                        else:
-                            cmdSendMsg(server,ch.cName,msg)
-                            instantMsg=True
-
-                        if instantMsg != True:
-                            msgBuff=IRC.msgBuffer()
-                            msgBuff.msg=msg
-                            msgBuff.sendTimestamp=time
-                            msgBuff.dest=cChannel
-                            ch.cMsgBuffer.append(msgBuff)
-                            pDebug("\033[1;31mAdded to " + ch.cName)
-                            #Call all the onByteSendChange events
-                            for event in IRC.eventFunctions:
-                                if event.eventName == "onByteSendChange" and event.cServer == server:
-                                    gobject.idle_add(event.aFunc,server,len(ch.cMsgBuffer))
-
-                        break
-
-                        
-
-                #If it is originating from IRC.sendMsgBuffer
-                else:
+                #If the msgBuffer(msg queue) has no messages waiting to be sent, send this message right now.
+                if len(ch.cMsgBuffer) == 0:
                     cmdSendMsg(server,cChannel,msg)
+                    break
+                #If the msgBuffer(msg queue) has messages waiting, add this new message to the end of the queue.
+                else:
+                    import time
+                    instantMsg=False #If this is set to true the message won't be added to the msg buffer.
+                    #If this message is the 5th message to be sent in a row, then add >the number of sendInstantly equal to False msgBuffers< * 3
+                    #(So it waits 3 times the number of non instantly sent messages, to send this message.)
+                    if len(ch.cMsgBuffer) >= 5:
+                        time=time.time() + (3*(len(ch.cMsgBuffer)+1))
+                    #Else, this is a message to be sent instantly.
+                    else:
+                        cmdSendMsg(server,ch.cName,msg)
+                        instantMsg=True
 
+                    if instantMsg != True:
+                        msgBuff=IRC.msgBuffer()
+                        msgBuff.msg=msg
+                        msgBuff.sendTimestamp=time
+                        msgBuff.dest=cChannel
+                        ch.cMsgBuffer.append(msgBuff)
+                        pDebug("\033[1;31mAdded to " + ch.cName)
+                        #Call all the onByteSendChange events
+                        for event in IRC.eventFunctions:
+                            if event.eventName == "onByteSendChange" and event.cServer == server:
+                                gobject.idle_add(event.aFunc,server,len(ch.cMsgBuffer))
 
-
-
+                    break
 
 #A cleaner one function way to send a message
 def cmdSendMsg(server,cChannel,msg):
@@ -170,8 +158,6 @@ def cmdSendMsg(server,cChannel,msg):
     for event in IRC.eventFunctions:
         if event.eventName == "onOwnPrivMsg" and event.cServer == server:
             gobject.idle_add(event.aFunc,cResp,server)
-
-
 
 #sendNotice, Sends a NOTICE to the channel specified.
 def sendNotice(server,cChannel,msg):

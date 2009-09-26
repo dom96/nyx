@@ -1,4 +1,22 @@
 I know this isn't correct ChangeLog format...
+2009-09-26  Dominik Picheta  <dominikpicheta@googlemail.com>
+
+    * Added settings, you can change them in settings.xml
+    * Cleaned up the code A LOT, moved all the IRC Events to IRCEvents.py
+
+
+2009-09-20  Dominik Picheta  <dominikpicheta@googlemail.com>
+
+    * Changed the lag meter to show miliseconds, instead 0.123456789
+    * Added channel mode info when you right click a channel
+    * Fixed the problem with multiple users changed modes
+    * Added SSL Support
+
+2009-09-16  Dominik Picheta  <dominikpicheta@googlemail.com>
+
+    * topicChange fix
+    * InspIRCd server NICK fix
+
 2009-09-09  Dominik Picheta  <dominikpicheta@googlemail.com>
 
     * KICK message, user list fix.
