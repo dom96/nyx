@@ -33,5 +33,4 @@ while 1:
     if not data: break
     print data
     conn.send(data)
-conn.close()
 

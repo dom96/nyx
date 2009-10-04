@@ -52,7 +52,6 @@ def connect(server):
             pDebug("ERROR!!! NO SSL FOUND")
 
     #Connect to the server with a socket.
-
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #Make a new socket
 
     if server.addresses[0].cSsl==True:
@@ -72,42 +71,18 @@ def connect(server):
     gtk.gdk.threads_enter()
     thread.start_new(pingPong,(server,))
     gtk.gdk.threads_leave()
-    """
-    I've put it here, because now it gets the server responses too.
-    This let's it not hang, on servers when there is no reply to the USER message or the NICK message.        
-    """
-
-    #data = server.cSocket.recv(1024) #Receive the response
-    #print data
-    #datParsed = ResponseParser.parse(data,True,False)
-    #for event in eventFunctions:
-        #if event.eventName == "onServerMsg" and event.cServer == server:
-            #event.aFunc(datParsed,server)
 
     pDebug("Sending NICK")
     pDebug("\033[1;34mNICK " + server.cNick + "\\r\\n\033[1;m")
     #Send the "NICK" command, to the server, this is the third command to be sent to the server.And last step to connect.
     server.cSocket.send('NICK ' + server.cNick + ' \r\n') # NICK >nick< CR-LF
-    #Don't wait for responses to the NICK command
-    #data = server.cSocket.recv(1024) #Receive the response
-    #print data
-    #datParsed = ResponseParser.parse(data,True,False)
-    #for event in eventFunctions:
-        #if event.eventName == "onServerMsg" and event.cServer == server:
-            #event.aFunc(datParsed,server)
 
 
     pDebug("Sending USER")
-    pDebug("\033[1;34mUSER " + server.cNick + " " + server.cNick + " " + server.addresses[0].cAddress + " :" + server.cRealname + "\\r\\n\033[1;m")
+    pDebug("\033[1;34mUSER " + server.cUsername + " " + server.cUsername + " " + server.addresses[0].cAddress + " :" + server.cRealname + "\\r\\n\033[1;m")
     #Send the "USER" command, to the server, this is the second command to be sent to the server.
-    # USER >nick< >nick< >address< :>realname< CR-LF
-    server.cSocket.send("USER " + server.cNick + " " + server.cNick + " " + server.addresses[0].cAddress + " :" + server.cRealname + "\r\n")  
-    #data = server.cSocket.recv(1024) #Receive the response
-    #print data
-    #datParsed = ResponseParser.parse(data,True,False)
-    #for event in eventFunctions:
-        #if event.eventName == "onServerMsg" and event.cServer == server:
-            #event.aFunc(datParsed,server)
+    # USER >username< >username< >address< :>realname< CR-LF
+    server.cSocket.send("USER " + server.cUsername + " " + server.cUsername + " " + server.addresses[0].cAddress + " :" + server.cRealname + "\r\n")  
 
     thread.start_new(pingServer,(server,))
 
@@ -186,16 +161,19 @@ def pingPong(server):
 
                             #Reset the msg after parsing
                             msg=""
-            #If msg==""
             else:
                 pDebug(data)
                 if data=="":
                     pDebug("\033[1;31mServer closed connection\033[1;m")
                     server.connected=False
+                    import IRC
+                    for event in IRC.eventFunctions:
+                        if event.eventName == "onServerDisconnect" and event.cServer == server:
+                            gobject.idle_add(event.aFunc,server)
 
         except Exception as err:
             pDebug("\033[1;40m\033[1;33m" + str(err) + "\033[1;m\033[1;m")
-            #traceback.print_exc()   
+            traceback.print_exc()   
 
 def pingServer(server):
     while server.connected:
@@ -212,6 +190,7 @@ def sendMsgBuffer(server):
             if len(i.cMsgBuffer) != 0:
                 for msgBuff in i.cMsgBuffer:
                     currentTime=time.time()
+                    #TODO: Check the channel selected, and display only the number of messages to send on that channel
                     if currentTime >= msgBuff.sendTimestamp:
                         i.cMsgBuffer.remove(msgBuff)
                         pDebug("sendMsgBuffer, " + i.cName)
@@ -226,10 +205,14 @@ def sendMsgBuffer(server):
 
 #A connection to a server
 class server():
-    addresses=[] #The list of addresses, i.e when your unable to connect to the first server, cycle to the next one...
-    cAddress="" #Current address(When connected)
+    #User Stuff
     cNick="" #The nick that is used on this server.
     cRealname="" #The Real name that is being used on this server.
+    cUsername="" #Your username
+    #Server Stuff
+    addresses=[] #The list of addresses, i.e when your unable to connect to the first server, cycle to the next one...
+    cAddress="" #Current address(When connected)
+    nicks=[] #List of nicks(The primary nick is the first one, the alternative nicks are the ones after)
     cName="" #Name of this server.
     cMotd=None #The MOTD Message
     connected=False #If this server instance is connected.
@@ -237,6 +220,7 @@ class server():
 
     channels=[] #A List of channel(), these are all of the channels currently connected on his server.
 
+    """Stuff which isn't really needed...Pretty much for IRCEvents.py"""
     cTextBuffer=gtk.TextBuffer() #The TextBuffer, with the server messages.
     listTreeStore=gtk.TreeStore #The treestore, for easy access
     cTreeIter=gtk.TreeIter #The treeiter, for easy access of the servers iter.
@@ -249,6 +233,8 @@ class server():
 
     w = object #The Window....gah this is gonna take up a shitload of memory
 
+    cType="server"
+
 #A channel connection, on a server.
 class channel():
     cName="" #Name of this channel, e.g:#channel
@@ -259,6 +245,7 @@ class channel():
     cTextBuffer=gtk.TextBuffer() #The TextBuffer, with all of the messages, said by users etc.
     cMsgBuffer=[] #A list of messages waiting to be sent(class msgBuffer())
     UserListStore=gtk.ListStore(str,str) #The liststore, for the users of this channel
+    cType="channel"
 
 #A user connected to a channel.
 class user():

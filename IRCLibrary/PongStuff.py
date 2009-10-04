@@ -203,7 +203,29 @@ def servResp(server,i):
     try:
         if (splitI[1] in numericCode() or splitI[1]+splitI[2] == "NOTICEAUTH" or "NOTICE AUTH" in m):
             datParsed = ResponseParser.parse(i,True,False)
-            #pDebug("Considering this as a serverMsg: " + str(i))
+            
+            #Some stuff that has to be done, e.g.433(Nickname already in use), 432(Nickname reserved for someone...? Like ChanServ)
+            if splitI[1] == "433" or splitI[1] == "432":
+                #If the MOTD has been received that means the user connected
+                if server.cMotd == None:
+                    #Loop through the nicks to check which nick was
+                    #used, which will give you the next one to use.
+                    for i in range(0,len(server.nicks)):
+                        if server.nicks[i] == server.cNick:
+                            if len(server.nicks) != i + 1:
+                                server.cNick = server.nicks[i+1]
+                            else:
+                                #If there is no more alternative nicks
+                                #left make a random one.
+                                import random
+                                server.cNick = "r" + str(hash(str(random.randint(0,200)))).replace("-","")
+
+                            #Send a raw command, NICK <NewNick>
+                            pDebug("\033[1;34mNICK " + server.cNick + "\\r\\n\033[1;m")
+                            server.cSocket.send("NICK " + server.cNick + "\r\n")
+                            break
+
+
             for event in IRC.eventFunctions:
                 if event.eventName == "onServerMsg" and event.cServer == server:
                     gobject.idle_add(event.aFunc,datParsed,server)
@@ -395,7 +417,8 @@ def joinResp(server,i):#The join message
         if m is not False:
             #Make sure it's a JOIN msg.
             if m.typeMsg == "JOIN":
-                #If it's you that JOINed
+                #If it's you that JOINed, check if there is a TreeItem already for this channel
+                #and if not then add one.
                 if m.nick == server.cNick:
                     addNewUser=True
 
@@ -409,7 +432,7 @@ def joinResp(server,i):#The join message
                         nChannel.cTextBuffer = gtk.TextBuffer()
                         nChannel.UserListStore = gtk.ListStore(str,str)
                         try:
-                            nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.channel,None,gtk.gdk.Color(red=0,green=0,blue=0,pixel=0)])
+                            nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.channel,None,server.settings.normalTColor])
                         except:
                             import traceback; traceback.print_exc()
                         nChannel.cMsgBuffer = [] #This fixes the weird problem with the queue being in the wrong channel.
@@ -625,10 +648,32 @@ def privmsgResp(server,i):#the private msg(Normal message)
                 #PING 123456789
             #!--CTCP PING END--!#
             
+            #If someone sent YOU a PRIVMSG(i.e to you, not a channel), then make a new 'channel' for that user.
+            if m.channel == server.cNick and m.msg.startswith("") == False:
+                addNewUser=True
+                #:Amrykid!Nyx@sirc-e458c87b.wi.localnet.com PRIVMSG dom96 :pie
+                for ch in server.channels:
+                    if ch.cName.lower() == m.nick.lower():
+                        addNewUser=False
+
+                if addNewUser==True:
+                    nChannel = IRC.channel()
+                    nChannel.cName = m.nick
+                    nChannel.cTextBuffer = gtk.TextBuffer()
+                    nChannel.UserListStore = None
+                    try:
+                        nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.nick,None,server.settings.normalTColor])
+                    except:
+                        import traceback; traceback.print_exc()
+                    nChannel.cMsgBuffer = [] #This fixes the weird problem with the queue being in the wrong channel.
+                    #Add the user who PM'ed you to the Channel list
+                    server.channels.append(nChannel)
+
             #Call all the onPrivMsg events
             for event in IRC.eventFunctions:
                 if event.eventName == "onPrivMsg" and event.cServer == server:
                     gobject.idle_add(event.aFunc,m,server)
+
     #!--PRIVMSG STUFF END--!#
 def motdStuff(server,i):#MOTD stuff
     global MOTDStarted

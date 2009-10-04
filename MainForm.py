@@ -79,9 +79,12 @@ class MainForm:
                 for address in server.addresses:
                     self.nServer.addresses.append(address)
                 break #TODO:Delete this and make it connect to each and every server with autoconnect = True
-
+        #Add the nick and the alternative nicks...
+        for nick in self.settings.nicks:
+            self.nServer.nicks.append(nick)
         self.nServer.cNick = self.settings.nicks[0]
         self.nServer.cRealname = self.settings.realname
+        self.nServer.cUsername = self.settings.username
         self.nServer.listTreeStore = listTreeStore
         self.nServer.settings = self.settings
 
@@ -127,6 +130,7 @@ class MainForm:
         IRC.connectEvent("onOwnPrivMsg",self.onOwnPrivMsg,self.nServer)
         IRC.connectEvent("onTopicChange",self.onTopicChange,self.nServer); IRC.connectEvent("onTopicChange",IRCEvents.onTopicChange,self.nServer)
         IRC.connectEvent("onChannelModeChange",IRCEvents.onChannelModeChange,self.nServer)
+        IRC.connectEvent("onServerDisconnect",IRCEvents.onServerDisconnect,self.nServer)
 
         #Start a new a connection to a server(Multi threaded), self.nServer contains all the info needed, address etc.
         #gtk.gdk.threads_enter()
@@ -412,9 +416,8 @@ class MainForm:
                         if sl == i.cName:
                             dest = i.cName
                     else:
-                        for usr in i.cUsers:
-                            if usr.cNick == sl:
-                                dest = usr.cNick
+                        if sl == i.cName:
+                            dest = i.cName
 
             wText = widget.get_text()
             if wText.startswith(" "):
@@ -445,17 +448,15 @@ class MainForm:
                         UserListTreeView.set_model(i.UserListStore)
                         pDebug(i.cTopic)
                         self.TopicEntryBox.set_text(i.cTopic)
-
+            #If the selected iter is a user
             else:
-                NewTextBufferSelected = False #This is so it doesn't select the textbuffer of the users from another channel
                 for i in servers[0].channels:
-                    for usr in i.cUsers:
-                        if usr.cNick == newlySelected and NewTextBufferSelected == False:
-                            servers[0].listTreeStore.set_value(usr.cTreeIter,2,normalChannelColor)
-                            chatTextView.set_buffer(usr.cTextBuffer)
-                            pDebug("NewTextBuffer User = " + usr.cNick + " channel = " + i.cName)
-                            NewTextBufferSelected=True
-                            break
+                    pDebug(i.cName.lower() + newlySelected.lower())
+                    if i.cName.lower() == newlySelected.lower():
+                        servers[0].listTreeStore.set_value(i.cTreeIter,2,normalChannelColor)
+                        chatTextView.set_buffer(i.cTextBuffer)
+                        pDebug("NewTextBuffer User = " + i.cName)
+                        break
 
         else:#If the selected iter is a server
             for i in servers:
@@ -474,8 +475,8 @@ class MainForm:
         chatTextView.scroll_to_mark(endMark,0)
 
     def TreeView_focusInEvent(self,widget,event):
-        pDebug("TreeView_Activated")
         self.chatEntry.grab_focus()
+
     def TreeView_ButtonPressEvent(self, treeview, event):
         if event.button == 3:
             x = int(event.x)
@@ -603,7 +604,13 @@ class MainForm:
 
                 if TreeIterValue.startswith("#"):
                     menu.popup(None, None, None, event.button, time)
+                elif ServerIter != None:
+                    #Hide the modes which are 'Channel only'
+                    channel_item.hide()
+                    menu.popup(None, None, None, event.button, time)
+
             return 1
+
     def closeChannelClick(self, widget, path):
         TreeIter = listTreeStore.get_iter(path)
         TreeIterValue = listTreeStore.get_value(TreeIter,0)
@@ -612,10 +619,13 @@ class MainForm:
             if ch.cName == TreeIterValue:
                 servers[0].channels.remove(ch)
                 break
+
         listTreeStore.remove(TreeIter)
-        if TreeIterColor == normalChannelColor: #TODO: have to change the color of the channel when the user PARTs it.
+        if TreeIterColor == normalChannelColor and TreeIterValue.startswith("#"): #TODO: have to change the color of the channel when the user PARTs it.
             servers[0].cSocket.send("PART " + TreeIterValue + " :Leaving\r\n")
+
     """TREEVIEW EVENTS END!!!"""
+
     """_-USER-_TREEVIEW EVENTS START HERE!!!"""
     def UserTreeView_ButtonPressEvent(self, treeview, event):
         if event.button == 3:

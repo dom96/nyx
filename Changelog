@@ -1,9 +1,13 @@
 I know this isn't correct ChangeLog format...
+2009-10-03  Dominik Picheta  <dominikpicheta@googlemail.com>
+
+    * Made Private Messages work like they're suppose to...
+    * Added disconnect messages...
+
 2009-09-26  Dominik Picheta  <dominikpicheta@googlemail.com>
 
     * Added settings, you can change them in settings.xml
     * Cleaned up the code A LOT, moved all the IRC Events to IRCEvents.py
-
 
 2009-09-20  Dominik Picheta  <dominikpicheta@googlemail.com>
 

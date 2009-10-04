@@ -128,6 +128,9 @@ def setChatColorVar(loadedSettings,name,color):
         loadedSettings.joinColor = color
     elif name == "highlight":
         loadedSettings.highlightColor = color
+    elif name == "error":
+        loadedSettings.errorColor = color
+
 """Sets the treeviewColors in loadedSettings"""
 def setTreeColorVar(loadedSettings,name,color):
     if name == "normal":
@@ -154,6 +157,7 @@ class settings:
     partColor=gtk.gdk.Color(red=0,green=0,blue=0,pixel=0)
     joinColor=gtk.gdk.Color(red=0,green=0,blue=0,pixel=0)
     highlightColor=gtk.gdk.Color(red=0,green=0,blue=0,pixel=0)
+    errorColor=gtk.gdk.Color(red=0,green=0,blue=0,pixel=0)
     #treeviewColors
     normalTColor=gtk.gdk.Color(red=0,green=0,blue=0,pixel=0)
     highlightTColor=gtk.gdk.Color(red=0,green=0,blue=0,pixel=0)

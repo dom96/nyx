@@ -15,3 +15,6 @@ onUserRemove - When a user either QUIT's or PART's(from a channel), provides the
 onLagChange - When the lag changes - cResp,cServer
 onByteSendChange - When the number of messages waiting to be sent changes - cServer,entriesLeft
 onOwnPrivMsg - When this user sends a message to the server - cResp, cServer
+onTopicChange - When the topic changes - cResp, cServer
+onChannelModeChange - When the channel mode changes - cResp, cServer
+onServerDisconnect - When the server disconnects - server
