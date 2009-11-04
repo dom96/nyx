@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--Nyx Settings file-->
 <settings>
-  <nicks>Nyx dom96 ChanServ</nicks>
+  <nicks>Nyx Nyx_ Nyx__</nicks>
   <username>Nyx</username>
-  <realname>Nyx</realname>
+  <realname>Nyx IRC Client</realname>
   <!--<proxy address="" port="" />-->
+  <theme name="Default Theme" path="/themes/default.xml"/>
 
   <chatColors>
     <color name="server" red="0" green="0" blue="0" />
@@ -23,8 +24,12 @@
     <color name="status" red="0" green="200" blue="255" />
   </treeviewColors>
   <servers>
-    <server name="SilverIRC" autoconnect="true">
+    <server name="MDSNet" autoconnect="true">
       <!--<address port="6667" ssl="false">localhost</address>-->
+      
+      
+      <address port="6669" ssl="false">dom96.dynalias.com</address>
+      <address port="6669" ssl="false" pass="awesomeness">programble.dynalias.com</address>
       <address port="6669" ssl="false">irc.archerseven.com</address>
       <address port="6667" ssl="false">ikey.dynalias.com</address>
     </server>
@@ -34,5 +39,9 @@
     <server name="Freenode" autoconnect="false">
       <address port="8001" ssl="false">irc.freenode.net</address>
     </server>
+    <server name="EFNet" autoconnect="false">
+      <address port="6667" ssl="false">irc.efnet.ch</address>
+    </server>
+
   </servers>
 </settings>

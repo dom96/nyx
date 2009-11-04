@@ -68,12 +68,29 @@ def entryBoxCheck(text,server,listTreeView):
         IRCHelper.sendMsg(server,cSelected,output)
         return True
 
-
-    if text.startswith("/") and text.startswith("//") == False:
-        server.cSocket.send(text.replace("/","") + "\r\n")
+    if text.startswith("/cycle"):
+        server.cSocket.send("PART " + text.split(" ")[1] + "\r\n")
+        server.cSocket.send("JOIN " + text.split(" ")[1] + "\r\n")
         return True
 
+    if text.startswith("/quit"):
+        pDebug("\033[1;34m" + "QUIT :%s" % (text[5:]) + "\\r\\n\033[1;m")
+        server.cSocket.send("QUIT :%s\r\n" % (text[5:]))
+        return True
 
-
+    if text.startswith("/") and text.startswith("//") == False:
+        pDebug("\033[1;34m" + text[1:] + "\\r\\n\033[1;m")
+        server.cSocket.send(text[1:] + "\r\n")
+        return True
 
     return False
+
+
+
+import inspect
+debugInfo=True
+def pDebug(txt):
+    if debugInfo:
+        func = str(inspect.getframeinfo(inspect.currentframe().f_back).function)
+        filename = str(inspect.getframeinfo(inspect.currentframe().f_back).filename);filename = filename.split("/")[len(filename.split("/"))-1]
+        print "[\033[1;34m"+str(inspect.currentframe().f_back.f_lineno).rjust(3, '0')+"\033[1;m, " + filename +"(" + func + ")]\n    " + str(txt)

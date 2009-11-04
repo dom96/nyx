@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--Nyx Theme file-->
+<theme>
+    <name>Default Theme</name>
+    <!--Theme stuff here-->
+
+    <replace key="m" text="[$tH$:$tM$:$tS$]" />
+    <replace key="%c%" text="\x03" />
+
+    <style name="motd" insert="%c%30m%c% %c%21&gt;%c%%c%28!%c%%c%21&lt;%c% $nM$" />
+    <style name="server" insert="%c%30m%c% %c%21&gt;%c%%c%28!%c%%c%21&lt;%c% $nM$" /> <!--Server messages, not including NOTICE AUTH(that's a NOTICE)-->
+    
+    <style name="part" if="$nM$ !=" insert="%time% $nN$ has left $nC$($nM$)" /> <!-- This will output "[Hour:Minute:Second] Nick has left Channel(Message)"
+    if $nM$ is not ""--> 
+
+
+</theme>

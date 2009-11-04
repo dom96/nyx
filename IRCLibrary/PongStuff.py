@@ -37,10 +37,27 @@ USERS = ""
 MOTDStarted = False
 MOTD = ""
 
-def channelModeStuff(server,i):
+def killResp(server, i, error, otherStuff):
+    #:dom96!dom96@DED48385.E7388619.9D7A5108.IP KILL Nyx :DED48385.E7388619.9D7A5108.IP!dom96 (Testing)
+    if "KILL" in i:
+        m = ResponseParser.parseMsg(i,False)
+        pDebug(m);pDebug(m.typeMsg)
+        if m is not False:
+            if m.typeMsg == "KILL":
+                for event in IRC.eventFunctions:
+                    if event.eventName == "onKillMsg" and event.cServer == server:
+                        gobject.idle_add(event.aFunc,m,server,otherStuff)
+                return "RECONNECT" #Make Nyx reconnect to the server.
+    return error
+
+
+def channelModeStuff(server,i,otherStuff):
     #:irc.archerseven.com 324 Nyx22 #ogame +nt
     #:irc.archerseven.com 329 Nyx22 #ogame 1253286530
-    msgCode=i.split(" ")[1]
+    if len(i.split(" ")) > 1:
+        msgCode=i.split(" ")[1]
+    else:
+        return 
     
     if msgCode=="324":
         datParsed = ResponseParser.parseServerRegex(i)[0]
@@ -50,20 +67,23 @@ def channelModeStuff(server,i):
 
         for event in IRC.eventFunctions:
             if event.eventName == "onChannelModeChange" and event.cServer == server:
-                gobject.idle_add(event.aFunc,datParsed,server)
+                gobject.idle_add(event.aFunc,datParsed,server,otherStuff)
     if msgCode=="329":
         datParsed = ResponseParser.parseServerRegex(i)[0]
 
         for event in IRC.eventFunctions:
             if event.eventName == "onChannelModeChange" and event.cServer == server:
-                gobject.idle_add(event.aFunc,datParsed,server)
+                gobject.idle_add(event.aFunc,datParsed,server,otherStuff)
 
 
-def topicStuff(server,i):
+def topicStuff(server,i,otherStuff):
     #:irc.archerseven.com 332 Nyx28 #Nyx :The Nyx channel
     #:dom96!dom96@maddogsoftware.co.uk TOPIC #ogame :This is the ogame channel, talk about ogame battles and look for ogame help here....
     #:irc.archerseven.com 333 Nyx28 #ogame dom96 1252250064
-    msgCode=i.split(" ")[1]
+    if len(i.split(" ")) > 1: 
+        msgCode=i.split(" ")[1]
+    else:
+        return
 
     if msgCode == "332":
         datParsed = ResponseParser.parseServerRegex(i)[0]
@@ -73,12 +93,14 @@ def topicStuff(server,i):
 
         for event in IRC.eventFunctions:
             if event.eventName == "onTopicChange" and event.cServer == server:
-                gobject.idle_add(event.aFunc,datParsed,server)
+                pDebug("calling onTopicChange")
+                gobject.idle_add(event.aFunc,datParsed,server,otherStuff)
     elif msgCode == "333":
         datParsed = ResponseParser.parseServerRegex(i)[0]
         for event in IRC.eventFunctions:
             if event.eventName == "onTopicChange" and event.cServer == server:
-                gobject.idle_add(event.aFunc,datParsed,server)
+                pDebug("calling onTopicChange")
+                gobject.idle_add(event.aFunc,datParsed,server,otherStuff)
 
     elif "TOPIC" in i:
         m = ResponseParser.parseMsg(i,False)
@@ -89,7 +111,8 @@ def topicStuff(server,i):
                     ch.cTopic = m.msg
             for event in IRC.eventFunctions:
                 if event.eventName == "onTopicChange" and event.cServer == server:
-                    gobject.idle_add(event.aFunc,m,server)
+                    pDebug("calling onTopicChange")
+                    gobject.idle_add(event.aFunc,m,server,otherStuff)
 
 def pongResp(server,i):
     #:irc.archerseven.com PONG irc.archerseven.com :LAG1250452847.82
@@ -105,7 +128,7 @@ def pongResp(server,i):
 
 
 #!--MODE CHANGE--!#
-def modeResp(server,i):
+def modeResp(server, i, otherStuff):
     #:ChanServ!services@ArcherNet.net MODE ## +o Nyx1
     if "MODE" in i:
         m=ResponseParser.parseMode(i)
@@ -113,14 +136,55 @@ def modeResp(server,i):
             if m.typeMsg == "MODE":
                 for event in IRC.eventFunctions:
                     if event.eventName == "onModeChange" and event.cServer == server:
-                        gobject.idle_add(event.aFunc,m,server)
+                        gobject.idle_add(event.aFunc,m,server,otherStuff)
                 try:
-                    nM = mLetters(m.msg.split()[0])
-                    pDebug("Mode(Channel format)=" + nM)
-                    usersWhoModeChanged=m.msg.replace(m.msg.split()[0] + " ","").split(" ")
-
                     #Check if it's a users mode being changed
                     if len(m.msg.split()) >= 2:
+                        nM = mLetters(m.msg.split()[0])
+                        pDebug("Mode(Channel format)=" + nM)
+                        #This is the 'unfiltered' list of users who's mode got changed
+                        #It's taken from the msg received
+                        usersWhoModeChanged=m.msg.replace(m.msg.split()[0] + " ","").split(" ") 
+                        #This is the list of 'filtered'(if there is more then one, of the same nick
+                        #then it's just one in this list...), this is added to in the following code.
+                        usrModeChangedFiltered = []
+
+
+                        #Loop through each mode(+qoa for example(Except the + or -))
+                        for i in range(0, len(m.msg.split()[0][1:])):
+                            #Find the channel this mode change happened on.
+                            for ch in server.channels:
+                                if ch.cName.lower() == m.channel.lower():
+                                    #Find the user the mode was given/taken to/from
+                                    for usr in ch.cUsers:
+                                        if usr.cNick.lower() == usersWhoModeChanged[i].lower():
+                                            #Set the users mode
+                                            cMode = mLetters(m.msg.split()[0][1:][i]) #The mode, converted into 'channel mode'(i.e what NAMES returns)
+                                            if m.msg.split()[0][:1] == "-":
+                                                pDebug(usr.cNick + ".cMode = " + usr.cMode)
+                                                usr.cMode = usr.cMode.replace(cMode,"")
+                                                pDebug(usr.cNick + ".cMode = " + usr.cMode)
+                                            else:
+                                                usr.cMode += cMode
+
+                                            #Check if 'usrModeChangedFiltered' contains this user.
+                                            contains = False
+                                            for u in usrModeChangedFiltered:
+                                                if u[0].cNick.lower() == usr.cNick.lower():
+                                                    contains = True
+
+                                            if contains == False:
+                                                usrModeChangedFiltered.append([usr, ch])
+
+                        for i in usrModeChangedFiltered:
+                            cIndex = findIndex(i[0], server, i[1]) #i[0] = user, i[1] = channel
+                            for event in IRC.eventFunctions:
+                                if event.eventName == "onUserOrderUpdate" and event.cServer == server:
+                                    #event.aFunc(ch,server,cIndex,usr)#Might couse some random SEGFAULTS!!!!!!!!!!!!!!
+                                    gobject.idle_add(event.aFunc, i[1], server, cIndex, i[0], priority=gobject.PRIORITY_LOW)
+
+
+                        """
                         #Find the cTreeIter
                         for ch in server.channels:
                             if ch.cName.lower() == m.channel.lower():
@@ -152,8 +216,11 @@ def modeResp(server,i):
                                             
                                             for event in IRC.eventFunctions:
                                                 if event.eventName == "onUserJoin" and event.cServer == server:
-                                                    event.aFunc(ch,server,cIndex,usr)#Might couse some random SEGFAULTS!!!!!!!!!!!!!!
-                    #If it's not a user's mode being changed...It's most like a channels mode
+                                                    #event.aFunc(ch,server,cIndex,usr)#Might couse some random SEGFAULTS!!!!!!!!!!!!!!
+                                                    gobject.idle_add(event.aFunc, ch, server, cIndex, usr, priority=gobject.PRIORITY_LOW)
+                    """
+
+                    #If it's not a user's mode being changed...It's most likely a channels mode
                     else:
                         for ch in server.channels:
                             if ch.cName == m.channel:
@@ -195,14 +262,14 @@ def mLetters(mode):
 
 #!--MODE CHANGE END--!#
 #!--servResp Stuff--!#
-def servResp(server,i):
+def servResp(server, i, otherStuff):
     #Split into new lines \n
     splitNewLines = i.split("\n")
     for m in splitNewLines:
         splitI = i.split(" ")
     try:
-        if (splitI[1] in numericCode() or splitI[1]+splitI[2] == "NOTICEAUTH" or "NOTICE AUTH" in m):
-            datParsed = ResponseParser.parse(i,True,False)
+        if (splitI[1] in numericCode()):
+            datParsed = ResponseParser.parseServerRegex(i)
             
             #Some stuff that has to be done, e.g.433(Nickname already in use), 432(Nickname reserved for someone...? Like ChanServ)
             if splitI[1] == "433" or splitI[1] == "432":
@@ -228,7 +295,7 @@ def servResp(server,i):
 
             for event in IRC.eventFunctions:
                 if event.eventName == "onServerMsg" and event.cServer == server:
-                    gobject.idle_add(event.aFunc,datParsed,server)
+                    gobject.idle_add(event.aFunc,datParsed,server,otherStuff)
     except:
         pDebug("\033[1;40m\033[1;33mIndex out of range-servResp\033[1;m\033[1;m")
 
@@ -262,7 +329,7 @@ def numericCode():
     return numericCode
 #!--Serv resp stuff END--!#
 
-def nickResp(server,i):
+def nickResp(server,i,otherStuff):
     if "NICK" in i:
         m = ResponseParser.parseMsg(i,True)
         if m is not False:
@@ -292,17 +359,17 @@ def nickResp(server,i):
                 pDebug("NICK----" + m.nick + " = " + m.msg)
                 for event in IRC.eventFunctions:
                     if event.eventName == "onNickChange" and event.cServer == server:
-                        gobject.idle_add(event.aFunc,m,server)
+                        gobject.idle_add(event.aFunc,m,server,otherStuff)
 
 
-def kickResp(server,i):
+def kickResp(server,i,otherStuff):
     if "KICK" in i:
         m = ResponseParser.parseKick(i)
         if m is not False:
             if m.typeMsg == "KICK":
                 for event in IRC.eventFunctions:
                     if event.eventName == "onKickMsg" and event.cServer == server:
-                        gobject.idle_add(event.aFunc,m,server)
+                        gobject.idle_add(event.aFunc,m,server,otherStuff)
 
                 try:
                     #Delete the user who got kicked.
@@ -327,32 +394,37 @@ def kickResp(server,i):
                     traceback.print_exc()
 
 
-def noticeResp(server,i):
+def noticeResp(server,i,otherStuff):
+    #:dom96!dom96@8450F173.4B9249EA.9D7A5108.IP NOTICE Nyx :test
     if "NOTICE" in i:
         m = ResponseParser.parseMsg(i,False)
         if m is not False:
             if m.typeMsg == "NOTICE":
                 for event in IRC.eventFunctions:
                     if event.eventName == "onNoticeMsg" and event.cServer == server:
-                        gobject.idle_add(event.aFunc,m,server)
+                        gobject.idle_add(event.aFunc,m,server,otherStuff)
 
 
 def userStuff(server,i):#The user list.
     global USERS
+    if len(i.split(" ")) > 1:
+        msgCode = i.split(" ")[1]
+    else:
+        return
 
-    msgCode = i.split(" ")[1]
     #!--USERS STUFF--!#
     if ("353" == msgCode):
         if i.startswith(":"):
             USERS += "\n"
             USERS += i
     if ("366" == msgCode):
+        USERS += "\n"
         USERS += i
         m = ResponseParser.parseServer(i)
         for channel in server.channels:
             if channel.cName == m[0].channel:
                 #Add the users correctly.
-                pDebug("\033[1;34m" + m[0].channel + "\033[1;m")
+                pDebug("\033[1;34mParsed server msg 'channel' is " + m[0].channel + "\033[1;m")
                 channel.cUsers = []
                 
                 for user in ResponseParser.parseUsers(USERS,server,channel):
@@ -370,20 +442,18 @@ or userF.startswith("+") or userF.startswith("~") or userF.startswith("&")):
                     channel.cUsers.append(usr)
                     pDebug("\033[1;32mAdded " + usr.cNick + " to " + channel.cName + " users list " + " with mode " + usr.cMode + "\033[1;m")
 
-                for us in channel.cUsers:                
-                    pDebug("\033[1;32m" + us.cNick + "(Mode " + us.cMode + ")" + "\033[1;m")
-
                 USERS = ""
 
                 for event in IRC.eventFunctions:
                     if event.eventName == "onUsersChange" and event.cServer == server:
-                        event.aFunc(channel,server)
+                        #event.aFunc(channel,server)
+                        gobject.idle_add(event.aFunc,channel, server, priority=gobject.PRIORITY_HIGH)
 
 
 
 #!--USERS STUFF END--!#
 
-def quitResp(server,i):#The quit message
+def quitResp(server,i,otherStuff):#The quit message
     #!--QUIT MSG--!#
     if "QUIT" in i:
         m = ResponseParser.parseMsg(i,False)
@@ -393,7 +463,7 @@ def quitResp(server,i):#The quit message
             if m.typeMsg == "QUIT" or "KILL":
                 for event in IRC.eventFunctions:
                     if event.eventName == "onQuitMsg" and event.cServer == server:
-                        gobject.idle_add(event.aFunc,m,server)
+                        gobject.idle_add(event.aFunc,m,server,otherStuff)
 
                 #Delete the user from the list of users.
                 for ch in server.channels:
@@ -409,7 +479,7 @@ def quitResp(server,i):#The quit message
 
     #!--QUIT MSG END--!#
 
-def joinResp(server,i):#The join message
+def joinResp(server,i,otherStuff):#The join message
     global USERS
     #!--JOIN MSG--!#
     if "JOIN" in i:
@@ -432,7 +502,7 @@ def joinResp(server,i):#The join message
                         nChannel.cTextBuffer = gtk.TextBuffer()
                         nChannel.UserListStore = gtk.ListStore(str,str)
                         try:
-                            nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.channel,None,server.settings.normalTColor])
+                            nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.channel,None,otherStuff.settings.normalTColor])
                         except:
                             import traceback; traceback.print_exc()
                         nChannel.cMsgBuffer = [] #This fixes the weird problem with the queue being in the wrong channel.
@@ -464,7 +534,7 @@ def joinResp(server,i):#The join message
 
                 for event in IRC.eventFunctions:
                     if event.eventName == "onJoinMsg" and event.cServer == server:
-                        gobject.idle_add(event.aFunc,m,server)
+                        gobject.idle_add(event.aFunc,m,server,otherStuff)
 
     #!--JOIN MSG END--!#
 #!--FOR JOIN(And MODE) MSG, finds the index of where to insert the new user.--!#
@@ -481,14 +551,17 @@ def findIndex(usr,cServer,cChannel):
             if cChannel.UserListStore.get_value(itr, 1) == lookupIcon("founder"):
                 fUsers.append(cChannel.UserListStore.get_value(itr,0))
             itr = cChannel.UserListStore.iter_next(itr)
+        pDebug(fUsers)
         #Add the user to the list of users.
         if "*" in usr.cMode or "~" in usr.cMode:
             fUsers.append(usr.cNick)
+        pDebug(fUsers)
         #Sort the list
         fUsers.sort(key=str.lower)
         #Find the index of where the user that JOINed is.
         if "*" in usr.cMode or "~" in usr.cMode:
             cIndex = fUsers.index(usr.cNick)
+            pDebug(cIndex)
             cISet=True
         """--------------------------------------"""
 
@@ -504,9 +577,11 @@ def findIndex(usr,cServer,cChannel):
             aUsers.append(usr.cNick)
         #Sort the list
         aUsers.sort(key=str.lower)
+        pDebug(cISet)
         #Find the index of where the user that JOINed is.
-        if "!" in usr.cMode or "&" in usr.cMode and cISet==False:
+        if ("!" in usr.cMode or "&" in usr.cMode) and cISet==False:
             cIndex = aUsers.index(usr.cNick) + len(fUsers)
+            pDebug(cIndex)
             cISet=True
         """--------------------------------------"""
 
@@ -523,7 +598,7 @@ def findIndex(usr,cServer,cChannel):
         #Sort the list
         oUsers.sort(key=str.lower)
         #Find the index of where the user that JOINed is.
-        if "@" in usr.cMode and cISet==False:
+        if ("@" in usr.cMode) and cISet==False:
             pDebug(len(fUsers) + len(aUsers))
             cIndex = oUsers.index(usr.cNick) + len(fUsers) + len(aUsers)
             cISet=True
@@ -542,7 +617,7 @@ def findIndex(usr,cServer,cChannel):
         #Sort the list
         hUsers.sort(key=str.lower)
         #Find the index of where the user that JOINed is.
-        if "%" in usr.cMode and cISet==False:
+        if ("%" in usr.cMode) and cISet==False:
             cIndex = hUsers.index(usr.cNick) + len(fUsers) + len(aUsers) + len(oUsers)
             cISet=True
         """--------------------------------------"""
@@ -560,11 +635,12 @@ def findIndex(usr,cServer,cChannel):
         #Sort the list
         vUsers.sort(key=str.lower)
         #Find the index of where the user that JOINed is.
-        if "+" in usr.cMode and cISet==False:
+        if ("+" in usr.cMode) and cISet==False:
             cIndex = vUsers.index(usr.cNick) + len(fUsers) + len(aUsers) + len(oUsers) + len(hUsers)
             cISet=True
         """--------------------------------------"""
 
+        pDebug(cIndex)
         #return the index
         return cIndex
         
@@ -579,7 +655,7 @@ def findIndex(usr,cServer,cChannel):
                 normUsers.append(cChannel.UserListStore.get_value(itr,0))
             else:
                 uNormUsrInt+=1
-                pDebug("Un-normal User adding..total:" + str(uNormUsrInt))
+                pDebug("Un-normal User adding " + cChannel.UserListStore.get_value(itr, 0) + " ..total:" + str(uNormUsrInt))
             itr = cChannel.UserListStore.iter_next(itr)
         #These should already be sorted alphabetically        
         #2.Add the user who JOINed, to the list.
@@ -601,7 +677,7 @@ def lookupIcon(icon):
             return stock
 #!--FOR JOIN MSG END--!#
 
-def partResp(server,i):#The part message
+def partResp(server,i,otherStuff):#The part message
     #!--PART MSG--!#
     if "PART" in i:
         m = ResponseParser.parseMsg(i,False)
@@ -610,7 +686,8 @@ def partResp(server,i):#The part message
             if m.typeMsg == "PART":
                 for event in IRC.eventFunctions:
                     if event.eventName == "onPartMsg" and event.cServer == server:
-                        gobject.idle_add(event.aFunc,m,server)
+                        gobject.idle_add(event.aFunc,m,server,otherStuff)
+
                 if m.nick.lower() != server.cNick.lower():
                     #Delete the user from the list of users.
                     for ch in server.channels:
@@ -626,16 +703,16 @@ def partResp(server,i):#The part message
                                             gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
 
     #!--PART MSG END--!#
-def privmsgResp(server,i):#the private msg(Normal message)
+def privmsgResp(server,i,otherStuff):#the private msg(Normal message)
     #!--PRIVMSG STUFF START--!#
     if "PRIVMSG" in i:
         m = ResponseParser.parseMsg(i,False)
         if m is not False:
-            pDebug(m.msg)
+            #pDebug(m.msg)
             #!--CTCP VERSION--!#
             if m.msg.startswith("VERSION"):
                 import platform
-                IRCHelper.sendNotice(server,m.nick,"VERSION Nyx 0.1 Revision 260909 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/ - running on " + platform.platform() + "")
+                IRCHelper.sendNotice(server,m.nick,"VERSION Nyx 0.1 111009 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/ - running on " + platform.platform() + "")
             #!--CTCP VERSION END--!#
             #!--CTCP TIME--!#
             if m.msg.startswith("TIME"):
@@ -662,7 +739,7 @@ def privmsgResp(server,i):#the private msg(Normal message)
                     nChannel.cTextBuffer = gtk.TextBuffer()
                     nChannel.UserListStore = None
                     try:
-                        nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.nick,None,server.settings.normalTColor])
+                        nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.nick,None,otherStuff.settings.normalTColor])
                     except:
                         import traceback; traceback.print_exc()
                     nChannel.cMsgBuffer = [] #This fixes the weird problem with the queue being in the wrong channel.
@@ -672,14 +749,16 @@ def privmsgResp(server,i):#the private msg(Normal message)
             #Call all the onPrivMsg events
             for event in IRC.eventFunctions:
                 if event.eventName == "onPrivMsg" and event.cServer == server:
-                    gobject.idle_add(event.aFunc,m,server)
+                    gobject.idle_add(event.aFunc,m,server,otherStuff)
 
     #!--PRIVMSG STUFF END--!#
-def motdStuff(server,i):#MOTD stuff
+def motdStuff(server, i, otherStuff):#MOTD stuff
     global MOTDStarted
     global MOTD    
-    
-    msgCode = i.split(" ")[1]
+    if len(i.split(" ")) > 1:
+        msgCode = i.split(" ")[1]
+    else:
+        return 
 
     #!--MOTD STUFF--!#
     #MOTD Start code, now i need to add the whole MOTD to one string until the MOTD END(376)
@@ -695,7 +774,7 @@ def motdStuff(server,i):#MOTD stuff
         #Call all the onMotdMsg events
         for event in IRC.eventFunctions:
             if event.eventName == "onMotdMsg" and event.cServer == server:
-                gobject.idle_add(event.aFunc,pResp,server)
+                gobject.idle_add(event.aFunc, pResp, server, otherStuff)
 
     #If MOTD is started (--and the code is 372--), add the motd to the MOTD string.                        
     if MOTDStarted == True and msgCode == "372":

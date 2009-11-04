@@ -9,7 +9,8 @@ import pango
 import time
 import sys
 #For errors
-#sys.stderr = open("Errors.txt", "w")
+#sys.stderr = open("Messages", "a")
+#sys.stdout = open("Messages","a")
 #IRCLibrary, Import
 from IRCLibrary import IRC,IRCHelper
 
@@ -70,15 +71,17 @@ class MainForm:
         self.w.set_default_size(750,450)
 
         self.settings = settings.loadSettings()
+        self.theme = settings.theme()
+        self.theme.loadTheme(self.settings.themePath)
 
         #Set up the server, which is connected to at startup in Nyx.
         self.nServer = IRC.server()
-        #self.nServer.cAddresses
+
         for server in self.settings.servers:
             if server.autoconnect == True:
-                for address in server.addresses:
-                    self.nServer.addresses.append(address)
+                self.nServer.addresses = server.addresses
                 break #TODO:Delete this and make it connect to each and every server with autoconnect = True
+        self.nServer.cAddress = self.nServer.addresses[0]
         #Add the nick and the alternative nicks...
         for nick in self.settings.nicks:
             self.nServer.nicks.append(nick)
@@ -86,13 +89,14 @@ class MainForm:
         self.nServer.cRealname = self.settings.realname
         self.nServer.cUsername = self.settings.username
         self.nServer.listTreeStore = listTreeStore
-        self.nServer.settings = self.settings
+        #self.nServer.settings = self.settings
+
+        IRC.otherStuff = IRC.other(self.settings, self.theme)
 
         #Setup the form
-        self.setupForm(self.w,self.nServer)
+        self.setupForm(self.w, self.nServer)
         self.w.show()
         #Setup the form END
-        pDebug(listTreeView)
 
         self.nServer.listTreeView = listTreeView
         self.nServer.UserListTreeView = UserListTreeView
@@ -101,14 +105,7 @@ class MainForm:
 
         servers.append(self.nServer)
 
-        #Colors
-        serverMsgTag = self.nServer.cTextBuffer.create_tag("serverMsgTag",foreground_gdk=serverMsgTagColor)#Orange
-        nickTag = self.nServer.cTextBuffer.create_tag("nickTag",foreground_gdk=nickTagColor)#Blue-ish
-        timeTag = self.nServer.cTextBuffer.create_tag("timeTag",foreground_gdk=timeTagColor)#Grey 
-        partTag = self.nServer.cTextBuffer.create_tag("partTag",foreground_gdk=partTagColor)#Red
-        successTag = self.nServer.cTextBuffer.create_tag("successTag",foreground_gdk=successTagColor)#Green
-        highlightTag = self.nServer.cTextBuffer.create_tag("highlightTag",foreground_gdk=highlightTagColor)
-
+        serverMsgTag = self.nServer.cTextBuffer.create_tag("serverMsgTag",foreground_gdk=self.settings.serverColor)#Orange
         self.nServer.cTextBuffer.insert_with_tags(self.nServer.cTextBuffer.get_end_iter(),"Nyx 0.1 Alpha Initialized\n",serverMsgTag)
 
         #Add the events.
@@ -125,12 +122,14 @@ class MainForm:
         IRC.connectEvent("onUsersChange",IRCEvents.onUsersChange,self.nServer)
         IRC.connectEvent("onUserJoin",IRCEvents.onUserJoin,self.nServer)
         IRC.connectEvent("onUserRemove",IRCEvents.onUserRemove,self.nServer)
+        IRC.connectEvent("onUserOrderUpdate",IRCEvents.onUserOrderUpdate,self.nServer)
         IRC.connectEvent("onLagChange",self.onLagChange,self.nServer)     
         IRC.connectEvent("onByteSendChange",self.onByteSendChange,self.nServer)
         IRC.connectEvent("onOwnPrivMsg",self.onOwnPrivMsg,self.nServer)
         IRC.connectEvent("onTopicChange",self.onTopicChange,self.nServer); IRC.connectEvent("onTopicChange",IRCEvents.onTopicChange,self.nServer)
         IRC.connectEvent("onChannelModeChange",IRCEvents.onChannelModeChange,self.nServer)
         IRC.connectEvent("onServerDisconnect",IRCEvents.onServerDisconnect,self.nServer)
+        IRC.connectEvent("onKillMsg",IRCEvents.onKillMsg,self.nServer)
 
         #Start a new a connection to a server(Multi threaded), self.nServer contains all the info needed, address etc.
         #gtk.gdk.threads_enter()
@@ -138,7 +137,9 @@ class MainForm:
         #gtk.gdk.threads_leave()   
 
     def delete_event(self, widget, event=None, data=None):
-        if servers[0].connected==True: servers[0].cSocket.send("QUIT :" + "Nyx IRC Client, visit http://sourceforge.net/projects/nyxirc/\r\n");
+        if servers[0].connected == True: 
+            servers[0].cSocket.send("QUIT :Nyx IRC Client, visit http://sourceforge.net/projects/nyxirc/\r\n")
+            #import time;time.sleep(0.4)
         gtk.main_quit()
         return False
 
@@ -196,16 +197,23 @@ class MainForm:
         self.server_menu.show()
         self.server_menu.set_submenu(self.server_menu_menu)
         """----------------------------------"""
-        #The preferences item in the tools item
-        self.preferences_menu = gtk.Menu()    
-        self.preferences_menu_item = gtk.ImageMenuItem(gtk.STOCK_PREFERENCES,"Preferences")    
-        self.preferences_menu.append(self.preferences_menu_item)
+
+        self.tools_menu_menu = gtk.Menu()    
+        #The disconnect item in the Server item
+        self.preferences_menu_item = gtk.ImageMenuItem(gtk.STOCK_PREFERENCES,"Preferences")
+        self.tools_menu_menu.append(self.preferences_menu_item)
         self.preferences_menu_item.show()
+
+        #The reconnect item in the Server item   
+        self.themes_menu_item = gtk.MenuItem(gtk.STOCK_CONNECT,"Themes")
+        self.themes_menu_item.get_children()[0].set_label("_Themes")
+        self.tools_menu_menu.append(self.themes_menu_item)
+        self.themes_menu_item.show()
 
         #The Tools item in the menu
         self.tools_menu = gtk.MenuItem("_Tools")
         self.tools_menu.show()
-        self.tools_menu.set_submenu(self.preferences_menu)
+        self.tools_menu.set_submenu(self.tools_menu_menu)
         """----------------------------------"""
         #The About item in the help item
         self.about_menu = gtk.Menu()    
@@ -314,6 +322,7 @@ class MainForm:
         self.HPaned2.pack2(self.UserScrolledWindow,False,True) #Resize = False Shrink = True
 
         self.UserTreeView = gtk.TreeView(UserListTreeStore)
+        self.UserTreeView.set_rules_hint(True) #Make odd numbered rows a different color(This doesn't seem to work for me...)
         #Border..
         self.UserScrolledWindow.set_shadow_type(gtk.SHADOW_IN)      
 
@@ -331,6 +340,7 @@ class MainForm:
         self.UserTreeView.append_column(self.usrTvcolumn)
         
         self.UserTreeView.set_headers_visible(False)#Don't show the Columns....
+
 
         self.usrcellpb = gtk.CellRendererPixbuf()#The renderer for images ??
         self.usrcell = gtk.CellRendererText()#The renderer for text
@@ -403,7 +413,6 @@ class MainForm:
 
     def chatEntry_Activate(self,widget):
         if widget.get_text() != "":
-            global timeTagColor, nickTagColor
             #Get the current channel...
             if len(servers[0].channels) != 0:
                 #Loop through all of the channels
@@ -460,10 +469,10 @@ class MainForm:
 
         else:#If the selected iter is a server
             for i in servers:
-                if i.cAddress == newlySelected:
+                if i.cAddress.cAddress == newlySelected:
                     i.listTreeStore.set_value(i.cTreeIter,2,normalChannelColor)
                     chatTextView.set_buffer(i.cTextBuffer)
-                    pDebug("NewTextBuffer Server = " + i.cAddress)
+                    pDebug("NewTextBuffer Server = " + i.cAddress.cAddress)
 
                     UserListTreeView.set_model(UserListTreeStore)
                     self.TopicEntryBox.set_text("")
@@ -690,6 +699,11 @@ class MainForm:
 
         lagMS = lagInt * 1000
         pDebug("onLagChange " + str(cResp[3].replace("\r","").replace("\n","")) + ";lag=" + str(lagInt) + ";lagInMS=" + str(lagMS))
+
+        #Change the lag to 0 if it's -Something
+        if lagMS < 0:
+            lagMS = 0
+
         self.pingLabel.set_text(str(int(round(lagMS))) + " ms")
 
     """
@@ -697,6 +711,7 @@ class MainForm:
     When the amount of Bytes to send(which reside in the queue waiting to be sent) changes
     """
     def onByteSendChange(self,cServer,entriesLeft):
+        #TODO:Make this only show for the currently selected channel
         self.queueLabel.set_text(str(entriesLeft) + " messages")
 
     """
@@ -730,7 +745,7 @@ class MainForm:
         timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=timeTagColor)#Grey 
         highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=highlightTagColor)#Red    
 
-        if "ACTION" in cResp.msg:
+        if cResp.msg.startswith("ACTION"):
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >",highlightTag)
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"!",nickTag)
@@ -756,30 +771,34 @@ class MainForm:
             m = re.findall("(https?://([-\w\.]+)+(:\d+)?(/([\w/_\-\.]*(\?\S+)?)?)?)",cResp.msg)
             endMark=rChannel.cTextBuffer.get_end_iter()
             lineOffsetBAddMsg=endMark.get_line_offset()
-            rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.msg + "\n",msgTag)
+            #rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.msg + "\n",msgTag)
+            msgNoMIRC = IRCEvents.formatAndInsertText(rChannel.cTextBuffer, endMark, cResp.msg + "\n")
+
+            import re
+            m = re.findall("(https?://([-\w\.]+)+(:\d+)?(/([\w/_\-\.]*(\?\S+)?)?)?)", msgNoMIRC)
             if m != None:
                 import pango
                 for i in m:
                     urlTag = rChannel.cTextBuffer.create_tag(None,underline=pango.UNDERLINE_SINGLE)
-                    urlTag.connect("event",self.urlTextTagEvent,i[0])
+                    urlTag.connect("event",IRCEvents.urlTextTagEvent,i[0])
                     endMark=rChannel.cTextBuffer.get_end_iter()
-                    startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + cResp.msg.index(i[0]))
-                    endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + (cResp.msg.index(i[0]) + len(i[0])))
+                    startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + msgNoMIRC.index(i[0]))
+                    endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + (msgNoMIRC.index(i[0]) + len(i[0])))
                     rChannel.cTextBuffer.apply_tag(urlTag,startIter,endIter)
             #URLs END-------------------------------------------------
             #File Paths-----------------------------------------------------
             import re
-            m = re.findall("(^[/|~][A-Za-z/.0-9]+)",cResp.msg)
+            m = re.findall("(^[/|~][A-Za-z/.0-9]+)",msgNoMIRC)
 
             if m != None:
                 import pango
                 for i in m:
                     fileTag = rChannel.cTextBuffer.create_tag(None,underline=pango.UNDERLINE_SINGLE)
-                    fileTag.connect("event",self.fileTextTagEvent,i)
+                    fileTag.connect("event",IRCEvents.fileTextTagEvent,i)
                     endMark=rChannel.cTextBuffer.get_end_iter()
-                    startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + cResp.msg.index(i))
-                    endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + (cResp.msg.index(i) + len(i)))
-                    pDebug(str(lineOffsetBAddMsg + cResp.msg.index(i)) + "--" + str(lineOffsetBAddMsg + (cResp.msg.index(i) + len(i))))
+                    startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + msgNoMIRC.index(i))
+                    endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + (msgNoMIRC.index(i) + len(i)))
+                    pDebug(str(lineOffsetBAddMsg + cResp.msg.index(i)) + "--" + str(lineOffsetBAddMsg + (msgNoMIRC.index(i) + len(i))))
                     rChannel.cTextBuffer.apply_tag(fileTag,startIter,endIter)
             #File Paths END-------------------------------------------------
 
@@ -792,7 +811,7 @@ class MainForm:
         try:
             change=True
             try:
-                if type(rChannel.cAddress) ==  str:
+                if type(rChannel.cAddress.cAddress) ==  str:
                     change=False
             except:
                 change=True
@@ -812,7 +831,7 @@ class MainForm:
     onTopicChange
     When the topic is changed, change the text in TopicTextBox
     """
-    def onTopicChange(self,cResp,cServer):
+    def onTopicChange(self,cResp,cServer,otherStuff):
         try:
             cResp.typeMsg = cResp.code
         except:

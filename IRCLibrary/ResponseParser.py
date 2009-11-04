@@ -44,18 +44,15 @@ def parse(data,server, motd):
         pass
 
 
+"""I THINK THIS WHOLE FUNCTION IS OBSOLETE????"""
 #Parses server responses, after connecting etc.Used by parse()
 def parseServer(data):
-    if data[:1] == "'": #If the first char of data is a ' remove it.
-        data = data[1:]
-    elif data[-1:] == "'": #If the last char of data is a ' remove it.
-        data = data[:-1]
-    
     mList = []
     splitData = string.split(data,"\n")
 
     for i in splitData:
         try:
+            #TODO:REMOVE?? THIS IS KIND OF OBSOLETE, since the 'NOTICE AUTH' is handled by the NOTICE Resp
             if "NOTICE AUTH" in i:
                 m = serverMsg()
                 #First method of parsing, NOTICE AUTH way(command has two :)       
@@ -115,7 +112,7 @@ def parseServer(data):
                     #pDebug(data[1:])
                     #reMatch = re.search(":.+",data[1:])
                     #try:
-                        #m.msg = reMatch.group(0)[1:][:-1]
+                        #m.msg = reMatch.group(0)[1:]
                     #except:
                         #pDebug("\033[1;40m\033[1;33mNo match for the message\033[1;m\033[1;m")                
                     mList.append(m)
@@ -136,11 +133,11 @@ def parseServerRegex(data):
         reMatch = re.search("(^:.+?\s)(.+?\s)(.+?\s)(.+?\s)(.+)",i)
 
         try:
-            m.server = reMatch.group(1)[:-1];pDebug("m.server="+m.server)
-            m.code = reMatch.group(2)[:-1];pDebug("m.code="+m.code)
-            m.nick = reMatch.group(3)[:-1];pDebug("m.nick="+m.nick)
-            m.channel = reMatch.group(4)[:-1];pDebug("m.channel=" + m.channel)
-            m.msg = reMatch.group(5)[:-1]
+            m.server = reMatch.group(1).replace(" ","");pDebug("m.server="+m.server)
+            m.code = reMatch.group(2).replace(" ","");pDebug("m.code="+m.code)
+            m.nick = reMatch.group(3).replace(" ","");pDebug("m.nick="+m.nick)
+            m.channel = reMatch.group(4).replace(" ","");pDebug("m.channel=" + m.channel)
+            m.msg = reMatch.group(5)
             if m.msg[:1] == ":":
                 m.msg = m.msg[1:]
             pDebug("m.msg=" + m.msg)
@@ -154,10 +151,8 @@ def parseServerRegex(data):
 
 #I'm forced to do this, the MOTD needs a seperate parser, a one that retains spaces.
 def parseMOTD(data):
-    if data[:1] == "'": #If the first char of data is a ' remove it.
+    if data[:1] == ":": #If the first char of data is a : remove it.
         data = data[1:]
-    elif data[-1:] == "'": #If the last char of data is a ' remove it.
-        data = data[:-1]
 
     mList = []
     splitData = string.split(data,"\n")
@@ -165,11 +160,21 @@ def parseMOTD(data):
     for i in splitData:
         try:
             m = serverMsg()
-            i = i[1:]
-            #print i
-            for g in re.finditer("(:)[^:]+", i):#Get the last : and the text after it
-                m.msg += unicode(g.group(0), 'utf-8') 
 
+            if i[:1] == ":":
+                i = i[1:]
+            for g in re.finditer("(:)[^:]+", i):#Get the last : and the text after it
+                #m.msg += unicode(g.group(0), 'utf-8')
+                #If decoding from utf-8 fails
+                #Decode from iso8859, and then to utf-8
+                try:
+                    m.msg += g.group(0).decode("utf-8", "strict")
+                except:
+                    m.msg += g.group(0).decode("iso8859").encode("utf-8")
+
+
+            if m.msg[:1] == ":":
+                m.msg = m.msg[1:]
             #print m.msg            
             mList.append(m)
 
@@ -186,7 +191,7 @@ def parseMOTD(data):
 
 #Parses PRIVMSG
 def parseMsg(data,noUnicode=False):
-    #:ikey!~hserver@my.fancy.host PRIVMSG vIRC :VERSION
+    #:ikey!~hserver@my.fancy.host PRIVMSG Nyx :VERSION
     try:
     # :dom96!~dom96@SpotChat-12E750B3.range86-131.btcentralplus.com PRIVMSG #geek :k
         splitMsg = string.split(data)
@@ -216,20 +221,36 @@ def parseMsg(data,noUnicode=False):
             msgInt = msgInt - 1
 
         import re
-        #pDebug(data[1:])
         reMatch = re.search(":.+",data[1:])
         try:
-            m.msg = reMatch.group(0)[1:][:-1]
+            m.msg = reMatch.group(0)[1:]
+
+            if noUnicode == False:
+                #If decoding from utf-8 fails
+                #Decode from iso8859, and then to utf-8
+                try:
+                    m.msg = m.msg.decode("utf-8", "strict")#.encode("utf-8")
+                except:
+                    m.msg = m.msg.decode("iso8859").encode("utf-8")
+
         except:
             reMatch = re.search("(.+?)\s(.+?)\s(.+)",data[1:])
             try:
-                m.msg = reMatch.group(3)[:-1]
+                m.msg = reMatch.group(3)
+
+                if noUnicode == False:
+                    #If decoding from utf-8 fails
+                    #Decode from iso8859, and then to utf-8
+                    try:
+                        m.msg = m.msg.decode("utf-8", "strict")#.encode("utf-8")
+                    except:
+                        m.msg = m.msg.decode("iso8859").encode("utf-8")
             except:
                 pDebug("\033[1;40m\033[1;33mNo match for the message\033[1;m\033[1;m")
 
     except:
         pDebug("\033[1;40m\033[1;33mError in parseMsg\033[1;m\033[1;m")
-        traceback.print_exc()
+        import traceback;traceback.print_exc()
         return False  
 
     return m
@@ -241,8 +262,8 @@ def parseUsers(data,server,nChannel):
     UserLstStart=False
     UserLstCmds=""
     #Parse the data returned(This should have the users and topic in it)-This has gotten pretty complicated
-    splitData = string.split(data,"\r")
-   # print splitData, "\n\n\n\n"
+    splitData = string.split(data,"\n")
+    print splitData, "\n\n\n\n"
     for i in splitData:
         
         #!--Parse as Server msg--!#
@@ -308,7 +329,7 @@ def parseKick(data):
         #pDebug(data[1:])
         reMatch = re.search(":.+",data[1:])
         try:
-            m.msg = reMatch.group(0)[1:][:-1]
+            m.msg = reMatch.group(0)[1:]
         except:
             pDebug("\033[1;40m\033[1;33mNo match for the KICK message\033[1;m\033[1;m")
 
@@ -355,7 +376,7 @@ def parseMode(data):
                 if i != msgInt:
                     m.msg += unicode(splitMsg[i], 'utf-8') + " "
         
-        m.msg = m.msg[:-1]
+        m.msg = m.msg
     except:
         pDebug("\033[1;40m\033[1;33mError in parseMode\033[1;m\033[1;m")
         traceback.print_exc()
@@ -369,7 +390,7 @@ class serverMsg():
     server="" #the server address
     code="" #the code, for example [001,002]
     msg="" #The msg...
-    nick="" #Not present in NOTICE AUTH, usually your own nick.
+    nick="" #usually your own nick.
     channel="" #Sometimes present, the channel.
 
 #A structure of a message(PRIVMSG)

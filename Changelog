@@ -1,4 +1,18 @@
 I know this isn't correct ChangeLog format...
+2009-10-31  Dominik Picheta  <dominikpicheta@googlemail.com>
+
+    * Added themes, now the text that Nyx outputs will be customizable(Still not finished yet)
+
+2009-10-31  Dominik Picheta  <dominikpicheta@googlemail.com>
+
+    * Nyx now reconnects to the server when disconnected
+    * Fixed some mIRC color bugs
+
+2009-10-23  Dominik Picheta  <dominikpicheta@googlemail.com>
+
+    * added mIRC colors, bold and underline
+    * Fixed the mode changes bug!
+
 2009-10-03  Dominik Picheta  <dominikpicheta@googlemail.com>
 
     * Made Private Messages work like they're suppose to...

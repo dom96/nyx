@@ -38,6 +38,24 @@ mIRCColors[13]=gtk.gdk.Color(red=176 * 257, green=55 * 257, blue=176 * 257, pixe
 mIRCColors[14]=gtk.gdk.Color(red=76 * 257, green=76 * 257, blue=76 * 257, pixel=0)
 mIRCColors[15]=gtk.gdk.Color(red=149 * 257, green=149 * 257, blue=149 * 257, pixel=0)
 
+mIRCColors[16]=gtk.gdk.Color(red=204 * 257, green=204 * 257, blue=204 * 257, pixel=0)
+mIRCColors[17]=gtk.gdk.Color(red=0, green=0, blue=0, pixel=0)
+mIRCColors[18]=gtk.gdk.Color(red=54 * 257, green=54 * 257, blue=178 * 257, pixel=0)
+mIRCColors[19]=gtk.gdk.Color(red=42 * 257, green=140 * 257, blue=42 * 257, pixel=0)
+mIRCColors[20]=gtk.gdk.Color(red=195 * 257, green=59 * 257, blue=59 * 257, pixel=0)
+mIRCColors[21]=gtk.gdk.Color(red=255 * 257, green=0 * 257, blue=0 * 257, pixel=0)#Changed this because it's dull...
+mIRCColors[22]=gtk.gdk.Color(red=128 * 257, green=38 * 257, blue=127 * 257, pixel=0)
+mIRCColors[23]=gtk.gdk.Color(red=102 * 257, green=54 * 257, blue=31 * 257, pixel=0)
+mIRCColors[24]=gtk.gdk.Color(red=217 * 257, green=166 * 257, blue=65 * 257, pixel=0)
+mIRCColors[25]=gtk.gdk.Color(red=61 * 257, green=204 * 257, blue=61 * 257, pixel=0)
+mIRCColors[26]=gtk.gdk.Color(red=26 * 257, green=85 * 257, blue=85 * 257, pixel=0)
+mIRCColors[27]=gtk.gdk.Color(red=47 * 257, green=140 * 257, blue=116 * 257, pixel=0)
+mIRCColors[28]=gtk.gdk.Color(red=50 * 257, green=150 * 257, blue=255 * 257, pixel=0)#Changed this because it's dull...
+mIRCColors[29]=gtk.gdk.Color(red=176 * 257, green=55 * 257, blue=176 * 257, pixel=0)
+mIRCColors[30]=gtk.gdk.Color(red=76 * 257, green=76 * 257, blue=76 * 257, pixel=0)
+mIRCColors[31]=gtk.gdk.Color(red=149 * 257, green=149 * 257, blue=149 * 257, pixel=0)
+
+
 def canonicalColor(s, bg=False, shift=0):
     """Assigns an (fg, bg) canonical color pair to a string based on its hash
     value.  This means it might change between Python versions.  This pair can

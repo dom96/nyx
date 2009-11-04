@@ -1,8 +1,11 @@
-NYX TODO List
+Nyx 
+The power of perfection :P
+
+TODO List
 
 --Users tab autocomplete.
 ----Users tab autocomplete shows list of possible users, if for example there are two users Areg and Acoustic and you type A<TAB> it shows a list of Areg And Acoustic.
 --Different colored Nicks(DONE)
---Private Message with a user - Make a new "channel" for the actual convo with the user
-
-
+--Private Message with a user - When the person you are having a conversation with changes their nickname change the in the TreeIter
+--Mode changes, still needs fixed :services.dom96.dynalias.com MODE #chat +o ChanServ
+--Add ident response support ?

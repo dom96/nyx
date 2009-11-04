@@ -24,31 +24,36 @@ When a MOTD Message is received.
 from time import localtime, strftime
 import gtk
 
-def onMotdMsg(cResp,cServer):#When a MOTD message is received and parsed.
+def onMotdMsg(cResp,cServer,otherStuff):#When a MOTD message is received and parsed.
     pDebug("onMotdMsg")
-    nickTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.nickColor)#Blue-ish
-    timeTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.timeColor)#Grey 
-    highlightTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.highlightColor)#Red
-    motdTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.motdColor)#Greyish
+    nickTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.nickColor)#Blue-ish
+    timeTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.timeColor)#Grey 
+    highlightTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.highlightColor)#Red
+    motdTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.motdColor)#Greyish
 
+    formatAndInsertText(cServer.cTextBuffer, cServer.cTextBuffer.get_end_iter(), "14T04E10S15T " + "\n")
+    
     for m in cResp:
         if m.msg != "":
             mSplit=m.msg.split("\n")
             for i in mSplit:
-                cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
-                cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter()," >",highlightTag)
-                cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),"!",nickTag)
-                cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),"< ",highlightTag)
-                cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),m.msg + "\n",motdTag)
-                pDebug("\033[1;35m" + i + "\033[1;m")
+                output = otherStuff.theme.parseStyle("motd", m.nick, "", m.code, m.channel, m.msg)
+                
+                if output != False:
+                    formatAndInsertText(cServer.cTextBuffer, cServer.cTextBuffer.get_end_iter(), output + "\n")
+                else:
+                    #Output the 'default' format(In case there isn't a style for this...)
+                    formatAndInsertText(cServer.cTextBuffer, cServer.cTextBuffer.get_end_iter(),"30" + strftime("[%H:%M:%S]", localtime()) + "")
+                    formatAndInsertText(cServer.cTextBuffer, cServer.cTextBuffer.get_end_iter(),"21 >28!21< ")
+                    formatAndInsertText(cServer.cTextBuffer, cServer.cTextBuffer.get_end_iter(), m.msg + "\n")
 
-    scrollTxtViewColorTItem(cServer, cServer, cServer.settings.statusTColor)
+    scrollTxtViewColorTItem(cServer, cServer, otherStuff.settings.statusTColor)
 
 """
 onServerMsg
 When a server message is received.
 """
-def onServerMsg(cResp,cServer):#When a server msg is received and parsed.
+def onServerMsg(cResp, cServer, otherStuff):#When a server msg is received and parsed.
     destTxtBuff = cServer
     for i in cResp:
         if i.channel != "":
@@ -57,46 +62,53 @@ def onServerMsg(cResp,cServer):#When a server msg is received and parsed.
                     destTxtBuff = ch
 
 
-    serverMsgTag = destTxtBuff.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.serverColor)#Orange
-    nickTag = destTxtBuff.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.nickColor)#Blue-ish
-    timeTag = destTxtBuff.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.timeColor)#Grey 
-    highlightTag = destTxtBuff.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.highlightColor)#Red
+    serverMsgTag = destTxtBuff.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.serverColor)#Orange
+    nickTag = destTxtBuff.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.nickColor)#Blue-ish
+    timeTag = destTxtBuff.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.timeColor)#Grey 
+    highlightTag = destTxtBuff.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.highlightColor)#Red
 
     for m in cResp:
         if m.msg != "":
-            destTxtBuff.cTextBuffer.insert_with_tags(destTxtBuff.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
-            destTxtBuff.cTextBuffer.insert_with_tags(destTxtBuff.cTextBuffer.get_end_iter()," >",highlightTag)
-            destTxtBuff.cTextBuffer.insert_with_tags(destTxtBuff.cTextBuffer.get_end_iter(),"!",nickTag)
-            destTxtBuff.cTextBuffer.insert_with_tags(destTxtBuff.cTextBuffer.get_end_iter(),"< ",highlightTag)
-            destTxtBuff.cTextBuffer.insert_with_tags(destTxtBuff.cTextBuffer.get_end_iter(),m.msg + "\n",serverMsgTag)
+            output = otherStuff.theme.parseStyle("server", m.nick, "", m.code, m.channel, m.msg)
+        
+            if output != False:
+                formatAndInsertText(cServer.cTextBuffer, cServer.cTextBuffer.get_end_iter(), output + "\n")
+            else:
+                #Output the 'default' format(In case there isn't a style for this...)
+                formatAndInsertText(destTxtBuff.cTextBuffer, destTxtBuff.cTextBuffer.get_end_iter(),"30" + strftime("[%H:%M:%S]", localtime()) + "")
+                formatAndInsertText(destTxtBuff.cTextBuffer, destTxtBuff.cTextBuffer.get_end_iter(),"21 >28!21< ")
+                formatAndInsertText(destTxtBuff.cTextBuffer, destTxtBuff.cTextBuffer.get_end_iter(), m.msg + "\n")
 
     """---------------------"""
     #This is if the serverMsg is for a server
     try:
         change=True
         try:
-            if type(destTxtBuff.cAddress) ==  str:
+            if type(destTxtBuff.cAddress.cAddress) ==  str:
                 change=True
         except:
             change=False
 
         if change==True:
-            destTxtBuff.cName=destTxtBuff.cAddress
+            destTxtBuff.cName=destTxtBuff.cAddress.cAddress
     except:
-        pDebug("\033[1;40m\033[1;33mMaking destTxtBuff.cName=destTxtBuff.cAddress failed.\033[1;m\033[1;m")
+        pDebug("\033[1;40m\033[1;33mMaking destTxtBuff.cName=destTxtBuff.cAddress.cAddress failed.\033[1;m\033[1;m")
     """----------------------"""
-    scrollTxtViewColorTItem(destTxtBuff, cServer, cServer.settings.statusTColor)
+    scrollTxtViewColorTItem(destTxtBuff, cServer, otherStuff.settings.statusTColor)
 
 
 """
 onPrivMsg
 When a PRIVMSG message is received, this includes an ACTION message.(And CTCP)
 """
-def onPrivMsg(cResp,cServer):#When a normal msg is received and parsed.
+def onPrivMsg(cResp, cServer, otherStuff):#When a normal msg is received and parsed.
+    rChannel = None    
     #Get the textbuffer for the right channel.
     for ch in cServer.channels:
         if ch.cName.lower() == cResp.channel.lower():
             rChannel = ch
+
+    if rChannel == None and cResp.channel.lower() != cServer.cNick.lower(): return    
 
     #If the "Channel" in the cResp is your nick, add it to the users 'channel' buffer..
     if cResp.channel.lower() == cServer.cNick.lower():
@@ -115,32 +127,37 @@ def onPrivMsg(cResp,cServer):#When a normal msg is received and parsed.
                 rChannel = ch
                 break
 
-    nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.nickColor)#Blue-ish
-    timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.timeColor)#Grey 
-    highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.highlightColor)#Red    
+    nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.nickColor)#Blue-ish
+    timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.timeColor)#Grey 
+    highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.highlightColor)#Red    
 
     colorToUse = None #The color to change the TreeIter to
     #Get the color for the nick, that sent the message
     import mIRCColors
     newNickTagColor = mIRCColors.mIRCColors.get(mIRCColors.canonicalColor(cResp.nick)[0])
     newNickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=newNickTagColor)
-
-    if "ACTION" in cResp.msg:
+    
+    if cResp.msg.startswith("ACTION"):
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >",highlightTag)
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"!",nickTag)
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"<",highlightTag)
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," " + cResp.nick,newNickTag)
-        rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter(),cResp.msg.replace("ACTION","").replace("","") + "\n")
-        colorToUse = cServer.settings.talkTColor #Set the correct color for the TreeIter
+        #rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter(),cResp.msg.replace("ACTION","").replace("","") + "\n")
+        formatAndInsertText(rChannel.cTextBuffer, rChannel.cTextBuffer.get_end_iter(), cResp.msg.replace("ACTION","").replace("","") + "\n")
+        colorToUse = otherStuff.settings.talkTColor #Set the correct color for the TreeIter
     elif "" in cResp.msg:
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >",highlightTag)
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"!",nickTag)
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"<",highlightTag)
-        rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter()," Received CTCP " + cResp.msg.replace("","") + " from " + cResp.nick + "\n")
-        pDebug(rChannel)
-        colorToUse = cServer.settings.statusTColor #Set the correct color for the TreeIter
+        if cResp.channel.lower() == cServer.cNick.lower():
+            rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter()," Received a CTCP " + cResp.msg.replace("","") + " from " + cResp.nick + "\n")
+        else:
+            rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter()," Received a CTCP " + cResp.msg.replace("","") 
+            + " from " + cResp.nick + " (" + cResp.channel + ")\n")
+
+        colorToUse = otherStuff.settings.statusTColor #Set the correct color for the TreeIter
     else:
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
 
@@ -151,47 +168,52 @@ def onPrivMsg(cResp,cServer):#When a normal msg is received and parsed.
                 rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," =",highlightTag)
                 rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick,nickTag)
                 rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"= ",highlightTag)
-                colorToUse = cServer.settings.talkTColor #Set the correct color for the TreeIter
+                colorToUse = otherStuff.settings.talkTColor #Set the correct color for the TreeIter
             #If there is a TreeIter with this user
             else:
                 rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," " + cResp.nick + ": ",newNickTag)
-                colorToUse = cServer.settings.talkTColor #Set the correct color for the TreeIter
+                colorToUse = otherStuff.settings.talkTColor #Set the correct color for the TreeIter
 
             #Make Nyx blink in the taskbar
             if cServer.w.focused==False:
                 cServer.w.set_urgency_hint(True)
-                colorToUse = cServer.settings.highlightTColor #Set the correct color for the TreeIter
+                colorToUse = otherStuff.settings.highlightTColor #Set the correct color for the TreeIter
         #If it's a message to the channel
         else:
             rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," " + cResp.nick + ": ",newNickTag)
-            colorToUse = cServer.settings.talkTColor #Set the correct color for the TreeIter
+            colorToUse = otherStuff.settings.talkTColor #Set the correct color for the TreeIter
 
         #Make a tag for the message
         msgTag = rChannel.cTextBuffer.create_tag(None)
-        if cServer.cNick.lower() in cResp.msg.lower():
-            msgTag.set_property("foreground-gdk",cServer.settings.highlightColor)
+        #pDebug(str(cResp.msg.decode("iso8859_15").encode("utf-8").lower()))
+        if cServer.cNick.encode("utf-8").lower() in cResp.msg.lower():#.decode("iso8859_15").encode("utf-8")
+            msgTag.set_property("foreground-gdk",otherStuff.settings.highlightColor)
             if cServer.w.focused==False:
                 cServer.w.set_urgency_hint(True)
-                colorToUse = cServer.settings.highlightTColor #Set the correct color for the TreeIter
+                colorToUse = otherStuff.settings.highlightTColor #Set the correct color for the TreeIter
         #URLs-----------------------------------------------------
-        import re
-        m = re.findall("(https?://([-\w\.]+)+(:\d+)?(/([\w/_\-\.]*(\?\S+)?)?)?)",cResp.msg)
+
         endMark=rChannel.cTextBuffer.get_end_iter()
         lineOffsetBAddMsg=endMark.get_line_offset()
-        rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.msg + "\n",msgTag)
+        #Add the message.. and get the txt without mIrc color code, bold etc.
+        #rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.msg + "\n",msgTag)
+        msgNoMIRC = formatAndInsertText(rChannel.cTextBuffer, endMark, cResp.msg + "\n")
+
+        import re
+        m = re.findall("(https?://([-\w\.]+)+(:\d+)?(/([\w/_\-\.]*(\?\S+)?)?)?)", msgNoMIRC)
         if m != None:
             import pango
             for i in m:
                 urlTag = rChannel.cTextBuffer.create_tag(None,underline=pango.UNDERLINE_SINGLE)
                 urlTag.connect("event",urlTextTagEvent,i[0])
                 endMark=rChannel.cTextBuffer.get_end_iter()
-                startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + cResp.msg.index(i[0]))
-                endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + (cResp.msg.index(i[0]) + len(i[0])))
+                startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + msgNoMIRC.index(i[0]))
+                endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + (msgNoMIRC.index(i[0]) + len(i[0])))
                 rChannel.cTextBuffer.apply_tag(urlTag,startIter,endIter)
         #URLs END-------------------------------------------------
         #File Paths-----------------------------------------------------
         import re
-        m = re.findall("(^[/|~][A-Za-z/.0-9]+)",cResp.msg)
+        m = re.findall("(^[/|~][A-Za-z/.0-9]+)",msgNoMIRC)
 
         if m != None:
             import pango
@@ -199,28 +221,12 @@ def onPrivMsg(cResp,cServer):#When a normal msg is received and parsed.
                 fileTag = rChannel.cTextBuffer.create_tag(None,underline=pango.UNDERLINE_SINGLE)
                 fileTag.connect("event",fileTextTagEvent,i)
                 endMark=rChannel.cTextBuffer.get_end_iter()
-                startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + cResp.msg.index(i))
-                endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + (cResp.msg.index(i) + len(i)))
-                pDebug(str(lineOffsetBAddMsg + cResp.msg.index(i)) + "--" + str(lineOffsetBAddMsg + (cResp.msg.index(i) + len(i))))
+                startIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + msgNoMIRC.index(i))
+                endIter=rChannel.cTextBuffer.get_iter_at_line_offset(endMark.get_line() - 1,lineOffsetBAddMsg + (msgNoMIRC.index(i) + len(i)))
+                pDebug(str(lineOffsetBAddMsg + cResp.msg.index(i)) + "--" + str(lineOffsetBAddMsg + (msgNoMIRC.index(i) + len(i))))
                 rChannel.cTextBuffer.apply_tag(fileTag,startIter,endIter)
         #File Paths END-------------------------------------------------
 
-
-    """---------------------
-    #This is just for when a user PM's you...
-    try:
-        change=True
-        try:
-            if type(rChannel.cAddress) ==  str:
-                change=False
-        except:
-            change=True
-
-        if change==True:
-            rChannel.cName=rChannel.cNick 
-    except:
-        pDebug("\033[1;40m\033[1;33mMaking rChannel.cName=rChannel.cNick failed.\033[1;m\033[1;m")
-    ----------------------"""
     pDebug("About to scroll, PRIVMSG")
     scrollTxtViewColorTItem(rChannel, cServer, colorToUse)
 
@@ -284,16 +290,16 @@ def fileTextTagMenuR_Activate(widget,path):
 onJoinMsg
 When a JOIN message is received.(When a user joins a channel)
 """
-def onJoinMsg(cResp,cServer):#When a user joins a channel
+def onJoinMsg(cResp,cServer,otherStuff):#When a user joins a channel
     #Get the textbuffer for the right channel.
     for ch in cServer.channels:
         pDebug(ch.cName + cResp.channel)
         if ch.cName.lower() == cResp.channel.lower():
             rChannel = ch
 
-    nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.nickColor)#Blue-ish
-    timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.timeColor)#Grey    
-    successTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.joinColor)#Green
+    nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.nickColor)#Blue-ish
+    timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.timeColor)#Grey    
+    successTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.joinColor)#Green
 
     rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
     rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," -->" + " ",nickTag)
@@ -310,13 +316,13 @@ def onJoinMsg(cResp,cServer):#When a user joins a channel
         selection = cServer.listTreeView.get_selection()
         selection.select_iter(rChannel.cTreeIter)
 
-    scrollTxtViewColorTItem(rChannel, cServer, cServer.settings.statusTColor)
+    scrollTxtViewColorTItem(rChannel, cServer, otherStuff.settings.statusTColor)
 
 """
 onQuitMsg
 When a QUIT message is received.(When a user quits server)
 """
-def onQuitMsg(cResp,cServer):
+def onQuitMsg(cResp,cServer,otherStuff):
     #Loop through each channel's users to see if the user who quit is in the channel
     for ch in cServer.channels:
         for user in ch.cUsers:
@@ -325,29 +331,29 @@ def onQuitMsg(cResp,cServer):
 
                 pDebug("Found channel: \033[1;35m" + rChannel.cName + "\033[1;m")
 
-                nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.nickColor)#Blue-ish
-                timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.timeColor)#Grey    
-                partTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.partColor)#Green
+                nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.nickColor)#Blue-ish
+                timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.timeColor)#Grey    
+                partTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.partColor)#Green
 
                 rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
                 rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," <--" + " ",nickTag)
                 rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick + " has quit " + rChannel.cName + " (" + cResp.msg + ")" + "\n",partTag)
 
-                scrollTxtViewColorTItem(rChannel, cServer, cServer.settings.statusTColor)
+                scrollTxtViewColorTItem(rChannel, cServer, otherStuff.settings.statusTColor)
 
 """
 onPartMsg
 When a PART message is received.(A user leaves a channel)
 """                     
-def onPartMsg(cResp,cServer):
+def onPartMsg(cResp,cServer,otherStuff):
     #Get the textbuffer for the right channel.
     for ch in cServer.channels:
         if ch.cName.lower() == cResp.channel.lower():
             rChannel = ch
 
-    nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.nickColor)#Blue-ish
-    timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.timeColor)#Grey    
-    partTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.partColor)#Green
+    nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.nickColor)#Blue-ish
+    timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.timeColor)#Grey    
+    partTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.partColor)#Green
 
     rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
     rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," <--" + " ",nickTag)
@@ -355,29 +361,31 @@ def onPartMsg(cResp,cServer):
 
     if cResp.nick.lower() == cServer.cNick.lower():
         pDebug("The user who parted is you, removing all the users...")
-        for usr in rChannel.cUsers:
-            rChannel.UserListStore.remove(usr.cTreeIter)
+        #for usr in rChannel.cUsers:
+            #rChannel.UserListStore.remove(usr.cTreeIter)
+        rChannel.UserListStore.clear()
         rChannel.cUsers = []
 
-    scrollTxtViewColorTItem(rChannel, cServer, cServer.settings.statusTColor)
+    scrollTxtViewColorTItem(rChannel, cServer, otherStuff.settings.statusTColor)
 
 """
 onNoticeMsg
 When a NOTICE message is received.
 """
-def onNoticeMsg(cResp,cServer):
-    try:
-        #Get the selected iter
-        model, selected = cServer.listTreeView.get_selection().get_selected()
-        newlySelected = cServer.listTreeStore.get_value(selected, 0)
-        #Get the textbuffer for the right channel.
-        for ch in cServer.channels:
-            if ch.cName.lower() == newlySelected.lower():
-                rChannel = ch
+def onNoticeMsg(cResp, cServer, otherStuff):
+    rChannel = None
+    #Get the selected iter
+    model, selected = cServer.listTreeView.get_selection().get_selected()
+    newlySelected = cServer.listTreeStore.get_value(selected, 0)
+    #Get the textbuffer for the right channel.
+    for ch in cServer.channels:
+        if ch.cName.lower() == newlySelected.lower():
+            rChannel = ch
 
-        nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.nickColor)#Blue-ish
-        timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.timeColor)#Grey    
-        highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.highlightColor)#red
+    if rChannel != None and cResp.nick != cServer.cAddress.cAddress:
+        nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.nickColor)#Blue-ish
+        timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.timeColor)#Grey    
+        highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.highlightColor)#red
 
         import mIRCColors
         newNickTagColor = mIRCColors.mIRCColors.get(mIRCColors.canonicalColor(cResp.nick)[0])
@@ -387,32 +395,43 @@ def onNoticeMsg(cResp,cServer):
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >",highlightTag)
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick,nickTag)
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"<" + " ",highlightTag)
-        rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter(),cResp.msg + "\n")
+        #rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter(),cResp.msg + "\n")
+        formatAndInsertText(rChannel.cTextBuffer, rChannel.cTextBuffer.get_end_iter(), cResp.msg + "\n")
 
-        scrollTxtViewColorTItem(rChannel, cServer, cServer.settings.talkTColor)
+        scrollTxtViewColorTItem(rChannel, cServer, otherStuff.settings.talkTColor)
 
-    except:#If a channel isn't selected print the text in the server TextBuffer
-        cServer.cTextBuffer.insert_with_tags_by_name(cServer.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),"timeTag")
-        cServer.cTextBuffer.insert_with_tags_by_name(cServer.cTextBuffer.get_end_iter()," >","highlightTag")
-        cServer.cTextBuffer.insert_with_tags_by_name(cServer.cTextBuffer.get_end_iter(),cResp.nick,"nickTag")  
-        cServer.cTextBuffer.insert_with_tags_by_name(cServer.cTextBuffer.get_end_iter(),"<" + " ","highlightTag")   
-        cServer.cTextBuffer.insert(cServer.cTextBuffer.get_end_iter(),cResp.msg + "\n")
+    else:
+        #If a channel isn't selected print the text in the server TextBuffer
+        nickTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.nickColor)#Blue-ish
+        timeTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.timeColor)#Grey    
+        highlightTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.highlightColor)#red
 
-        scrollTxtViewColorTItem(cServer, cServer, cServer.settings.talkTColor)
+        cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
+        cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter()," >",highlightTag)
+        if cResp.nick != cServer.cAddress.cAddress:
+            cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(), cResp.nick,nickTag)
+        else:
+            cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(), "!", nickTag)
+
+        cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),"<" + " ",highlightTag)   
+        #cServer.cTextBuffer.insert(cServer.cTextBuffer.get_end_iter(),cResp.msg + "\n")
+        formatAndInsertText(cServer.cTextBuffer, cServer.cTextBuffer.get_end_iter(), cResp.msg + "\n")
+
+        scrollTxtViewColorTItem(cServer, cServer, otherStuff.settings.talkTColor)
 
 """
 onKickMsg
 When a KICK message is received.(When a operator kicks another user from a channel)
 """
-def onKickMsg(cResp,cServer):
+def onKickMsg(cResp, cServer, otherStuff):
     #Get the textbuffer for the right channel.
     for ch in cServer.channels:
         if ch.cName.lower() == cResp.channel.lower():
             rChannel = ch
 
-    nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.nickColor)#Blue-ish
-    timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.timeColor)#Grey    
-    highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.highlightColor)#Green
+    nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.nickColor)#Blue-ish
+    timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.timeColor)#Grey    
+    highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.highlightColor)#Green
 
     personWhoKicked = cResp.nick.split(",")[0]
     personWhoWasKicked = cResp.nick.split(",")[1]
@@ -429,7 +448,7 @@ def onKickMsg(cResp,cServer):
             rChannel.UserListStore.remove(usr.cTreeIter)
         rChannel.cUsers = []
 
-    scrollTxtViewColorTItem(rChannel, cServer, cServer.settings.statusTColor)
+    scrollTxtViewColorTItem(rChannel, cServer, otherStuff.settings.statusTColor)
 
     if personWhoWasKicked == cServer.cNick:
         from IRCLibrary import IRCHelper
@@ -440,7 +459,7 @@ def onKickMsg(cResp,cServer):
 onNickChange
 When a NICK message is received.(When a user changes his nick or someone else(like a service) changes a users nick)
 """
-def onNickChange(cResp,cServer):
+def onNickChange(cResp, cServer, otherStuff):
 
     pDebug("OnNickChange")
     try:#If a channel isn't selected...
@@ -450,10 +469,10 @@ def onNickChange(cResp,cServer):
                 if usr.cNick.lower() == cResp.msg.lower():
                     rChannel = ch
 
-        nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.nickColor)#Blue-ish
-        timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.timeColor)#Grey    
-        highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.highlightColor)#Green
-        partTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.partColor)#Dark Blue
+        nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.nickColor)#Blue-ish
+        timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.timeColor)#Grey    
+        highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.highlightColor)#Green
+        partTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.partColor)#Dark Blue
 
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter()," >",highlightTag)
@@ -461,11 +480,11 @@ def onNickChange(cResp,cServer):
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),"<" + " ",highlightTag)
         rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),cResp.nick + " is now known as " + cResp.msg + "\n",partTag)
 
-        scrollTxtViewColorTItem(rChannel, cServer, cServer.settings.statusTColor)
+        scrollTxtViewColorTItem(rChannel, cServer, otherStuff.settings.statusTColor)
 
     except:
         #import traceback;traceback.print_exc()
-        partTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.partColor)#Dark Blue
+        partTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.partColor)#Dark Blue
 
         cServer.cTextBuffer.insert_with_tags_by_name(cServer.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),"timeTag")
         cServer.cTextBuffer.insert_with_tags_by_name(cServer.cTextBuffer.get_end_iter()," >","highlightTag")
@@ -473,21 +492,21 @@ def onNickChange(cResp,cServer):
         cServer.cTextBuffer.insert_with_tags_by_name(cServer.cTextBuffer.get_end_iter(),"<" + " ","highlightTag")   
         cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),cResp.nick + " is now known as " + cResp.msg + "\n",partTag)
 
-        scrollTxtViewColorTItem(cServer, cServer, cServer.settings.statusTColor)
+        scrollTxtViewColorTItem(cServer, cServer, otherStuff.settings.statusTColor)
 
 """
 onModeChange
 When a user changes his/her/someones MODE 
 """
-def onModeChange(cResp,cServer):
+def onModeChange(cResp, cServer, otherStuff):
     #Get the textbuffer for the right channel.
     for ch in cServer.channels:
         if ch.cName.lower() == cResp.channel.lower():
             rChannel = ch
 
-    nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.nickColor)#Blue-ish
-    timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.timeColor)#Grey    
-    highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.highlightColor)#Green
+    nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.nickColor)#Blue-ish
+    timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.timeColor)#Grey    
+    highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.highlightColor)#Green
 
     pDebug("cResp.msg=" + cResp.msg)
     mode = cResp.msg.split()[0]
@@ -530,11 +549,11 @@ def onModeChange(cResp,cServer):
     else:
         rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter()," sets mode " + mode + " in channel " + cResp.channel + "\n")
 
-    scrollTxtViewColorTItem(rChannel, cServer, cServer.settings.statusTColor)
+    scrollTxtViewColorTItem(rChannel, cServer, otherStuff.settings.statusTColor)
 
 """
 onUsersChange
-When the list of users are changed(When joining a channel
+When the list of users are changed(When a response to the NAMES command is received)
 """
 def onUsersChange(cChannel,cServer):
     noUserIcons = False
@@ -545,10 +564,11 @@ def onUsersChange(cChannel,cServer):
     # + = Voice
             
     #Clear the users in the treeview
-    #itr = cServer.listTreeStore.iter_children(cChannel.cTreeIter)
+    #itr = cChannel.UserListStore.get_iter_first()
     #while itr:
-        #cServer.listTreeStore.remove(itr)
-        #itr = cServer.listTreeStore.iter_next(itr)
+        #cChannel.UserListStore.remove(itr)
+        #itr = cChannel.UserListStore.iter_next(itr)
+    cChannel.UserListStore.clear()
 
     #Sort the users.
     owners = []
@@ -599,52 +619,38 @@ def onUsersChange(cChannel,cServer):
         for cUsr in cChannel.cUsers:
             if cUsr.cNick == user:
                 if itrContainsString(cUsr.cNick,cChannel.UserListStore.iter_children(cChannel.cTreeIter),cChannel.UserListStore) == False:
-                    if noUserIcons==False:
-                        cUsr.cTreeIter = cChannel.UserListStore.append([user,lookupIcon("founder")])
-                    else:
-                        cUsr.cTreeIter = cChannel.UserListStore.append([user,None])
+                    cUsr.cTreeIter = cChannel.UserListStore.append([user,lookupIcon("founder")])
     #Add the admins, to the list of users
     for user in admins:
         for cUsr in cChannel.cUsers:
             if cUsr.cNick == user:
                 if itrContainsString(cUsr.cNick,cChannel.UserListStore.iter_children(cChannel.cTreeIter),cChannel.UserListStore) == False:
-                    if noUserIcons==False:
-                        cUsr.cTreeIter = cChannel.UserListStore.append([user,lookupIcon("admin")])
-                    else:
-                        cUsr.cTreeIter = cChannel.UserListStore.append([user,None])
+                    cUsr.cTreeIter = cChannel.UserListStore.append([user,lookupIcon("admin")])
     #Add the operators, to the list of users
     for user in ops:
         for cUsr in cChannel.cUsers:
             if cUsr.cNick == user:
                 if itrContainsString(cUsr.cNick,cChannel.UserListStore.iter_children(cChannel.cTreeIter),cChannel.UserListStore) == False:
-                    if noUserIcons==False:
-                        cUsr.cTreeIter = cChannel.UserListStore.append([user,lookupIcon("op")])
-                    else:
-                        cUsr.cTreeIter = cChannel.UserListStore.append([user,None])
+                    cUsr.cTreeIter = cChannel.UserListStore.append([user,lookupIcon("op")])
     #Add the half operators, to the list of users
     for user in hops:
         for cUsr in cChannel.cUsers:
             if cUsr.cNick == user:
                 if itrContainsString(cUsr.cNick,cChannel.UserListStore.iter_children(cChannel.cTreeIter),cChannel.UserListStore) == False:
-                    if noUserIcons==False:
-                        cUsr.cTreeIter = cChannel.UserListStore.append([user,lookupIcon("hop")])
-                    else:
-                        cUsr.cTreeIter = cChannel.UserListStore.append([user,None])
+                    cUsr.cTreeIter = cChannel.UserListStore.append([user,lookupIcon("hop")])
     #Add the voices, to the list of users
     for user in vs:
         for cUsr in cChannel.cUsers:
             if cUsr.cNick == user:
                 if itrContainsString(cUsr.cNick,cChannel.UserListStore.iter_children(cChannel.cTreeIter),cChannel.UserListStore) == False:
-                    if noUserIcons==False:
-                        cUsr.cTreeIter = cChannel.UserListStore.append([user,lookupIcon("voice")])
-                    else:
-                        cUsr.cTreeIter = cChannel.UserListStore.append([user,None])
+                    cUsr.cTreeIter = cChannel.UserListStore.append([user,lookupIcon("voice")])
     #Add the rest, to the list of users
     for user in others:
         for cUsr in cChannel.cUsers:
             if cUsr.cNick == user:
                 if itrContainsString(cUsr.cNick,cChannel.UserListStore.iter_children(cChannel.cTreeIter),cChannel.UserListStore) == False:
                     cUsr.cTreeIter = cChannel.UserListStore.append([user,None])
+
 
 
 def itrContainsString(string,itr,treestore):
@@ -695,42 +701,28 @@ def onUserJoin(cChannel,cServer,cIndex,cUsr):
         pDebug("onUserJoin, " + cUsr.cMode)
         if "*" in cUsr.cMode or "~" in cUsr.cMode:
             pDebug("*"+str(cIndex))
-            if noUserIcons==False:
-                cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,lookupIcon("founder")])
-            else:
-                cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,None])
+            cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,lookupIcon("founder")])
             return
         elif "!" in cUsr.cMode or "&" in cUsr.cMode:
             pDebug("!"+str(cIndex))
-            if noUserIcons==False:
-                cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,lookupIcon("admin")])
-            else:
-                cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,None])
+            cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,lookupIcon("admin")])
             return
         elif "@" in cUsr.cMode:
             pDebug("@"+str(cIndex))
-            if noUserIcons==False:
-                cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,lookupIcon("op")])
-            else:
-                cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,None])
+            cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,lookupIcon("op")])
             return
         elif "%" in cUsr.cMode:
             pDebug("%"+str(cIndex))
-            if noUserIcons==False:
-                cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,lookupIcon("hop")])
-            else:
-                cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,None])
+            cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,lookupIcon("hop")])
+
             return
         elif "+" in cUsr.cMode:
             pDebug("+"+str(cIndex))
-            if noUserIcons==False:
-                try:
-                    cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,lookupIcon("voice")])
-                except:
-                    import traceback;traceback.print_exc()
-
-            else:
-                cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,None])
+            #if noUserIcons==False:
+            try:
+                cUsr.cTreeIter = cChannel.UserListStore.insert(cIndex,[cUsr.cNick,lookupIcon("voice")])
+            except:
+                import traceback;traceback.print_exc()
             return
 
 """
@@ -738,8 +730,6 @@ onUserRemove
 When a user either QUIT's ,PART's(from a channel) or is KICKed, provides the iter to remove
 """
 def onUserRemove(cChannel,cServer,cTreeIter,usr):
-    pDebug("onUserRemove")
-    pDebug(cChannel.cName)
     if usr != None:
         cChannel.cUsers.remove(usr)
     else:
@@ -753,10 +743,51 @@ def onUserRemove(cChannel,cServer,cTreeIter,usr):
         import traceback;traceback.print_exc()
 
 """
+onUserOrderUpdate
+When a users order(index) is updated.(For example mode change or nick change)
+"""
+def onUserOrderUpdate(cChannel, cServer, cIndex, cUsr):
+    from IRCLibrary import PongStuff
+    pDebug(cUsr.cNick)
+
+    if cIndex == 0:
+        cChannel.UserListStore.move_before(cUsr.cTreeIter, cChannel.UserListStore.get_iter(cIndex))
+    else:
+        cChannel.UserListStore.move_after(cUsr.cTreeIter, cChannel.UserListStore.get_iter(cIndex - 1))
+
+    if cUsr.cMode == "":
+        pDebug(cIndex)
+        cChannel.UserListStore.set_value(cUsr.cTreeIter, 1, None)
+    else:
+        r = False
+        if "*" in cUsr.cMode or "~" in cUsr.cMode:
+            pDebug("*"+str(cIndex))
+            cChannel.UserListStore.set_value(cUsr.cTreeIter, 1, lookupIcon("founder"))
+            r = True
+        elif "!" in cUsr.cMode or "&" in cUsr.cMode and r == False: # If r is True then the icon has already been set
+            pDebug("!"+str(cIndex))
+            cChannel.UserListStore.set_value(cUsr.cTreeIter, 1, lookupIcon("admin"))
+            r = True
+        elif "@" in cUsr.cMode and r == False: # If r is True then the icon has already been set
+            pDebug("@"+str(cIndex))
+            cChannel.UserListStore.set_value(cUsr.cTreeIter, 1, lookupIcon("op"))
+            r = True
+        elif "%" in cUsr.cMode and r == False: # If r is True then the icon has already been set
+            pDebug("%"+str(cIndex))
+            cChannel.UserListStore.set_value(cUsr.cTreeIter, 1, lookupIcon("hop"))
+            r = True
+        elif "+" in cUsr.cMode and r == False: # If r is True then the icon has already been set
+            pDebug("+"+str(cIndex))
+            cChannel.UserListStore.set_value(cUsr.cTreeIter, 1, lookupIcon("voice"))
+            r = True
+
+
+
+"""
 onTopicChange
 When a channels topic changes
 """
-def onTopicChange(cResp,cServer):
+def onTopicChange(cResp, cServer, otherStuff):
     #Get the textbuffer for the right channel.
     for ch in cServer.channels:
         if ch.cName.lower() == cResp.channel.lower():
@@ -769,9 +800,9 @@ def onTopicChange(cResp,cServer):
 
     #The text in TopicTextBox get's set in MainForm.py
 
-    nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.nickColor)#Blue-ish
-    timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.timeColor)#Grey    
-    highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.highlightColor)#Red
+    nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.nickColor)#Blue-ish
+    timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.timeColor)#Grey    
+    highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.highlightColor)#Red
 
     rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
     #>!<
@@ -790,13 +821,13 @@ def onTopicChange(cResp,cServer):
         t = time.strftime("%a, %d %b %Y %H:%M:%S %Z",time.gmtime(int(cResp.msg.split(" ")[1])))
         rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter(),"Topic on " + cResp.channel + " was set by " + cResp.msg.split(" ")[0] + " on " + t + "\n")
 
-    scrollTxtViewColorTItem(rChannel, cServer, cServer.settings.statusTColor)
+    scrollTxtViewColorTItem(rChannel, cServer, otherStuff.settings.statusTColor)
 
 """
 onChannelModeChange
 When a channels mode changes.
 """
-def onChannelModeChange(cResp,cServer):
+def onChannelModeChange(cResp, cServer, otherStuff):
     #Get the textbuffer for the right channel.
     for ch in cServer.channels:
         if ch.cName.lower() == cResp.channel.lower():
@@ -804,9 +835,9 @@ def onChannelModeChange(cResp,cServer):
 
     pDebug(cResp.code)
 
-    nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.nickColor)#Blue-ish
-    timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.timeColor)#Grey    
-    highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.highlightColor)#Red
+    nickTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.nickColor)#Blue-ish
+    timeTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.timeColor)#Grey    
+    highlightTag = rChannel.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.highlightColor)#Red
 
     rChannel.cTextBuffer.insert_with_tags(rChannel.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
     #>!<
@@ -824,32 +855,91 @@ def onChannelModeChange(cResp,cServer):
         t = time.strftime("%a, %d %b %Y %H:%M:%S %Z",time.gmtime(int(cResp.msg)))
         rChannel.cTextBuffer.insert(rChannel.cTextBuffer.get_end_iter(),"Channel " + cResp.channel + " was created on " + t + "\n")
 
-    scrollTxtViewColorTItem(rChannel, cServer, cServer.settings.statusTColor)
+    scrollTxtViewColorTItem(rChannel, cServer, otherStuff.settings.statusTColor)
 
-def onServerDisconnect(cServer):
+"""
+onServerDisconnect
+When the client is disconnected from the server or when a 'ERROR' message is received.
+"""
+def onServerDisconnect(cServer, otherStuff, error=""):
     #Get the textbuffer for each channel
     for ch in cServer.channels:
-        nickTag = ch.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.nickColor)#Blue-ish
-        timeTag = ch.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.timeColor)#Grey    
-        highlightTag = ch.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.highlightColor)#Red
-        #!!!
-        ch.cTextBuffer.insert_with_tags(ch.cTextBuffer.get_end_iter()," !",highlightTag)
-        ch.cTextBuffer.insert_with_tags(ch.cTextBuffer.get_end_iter(),"!",nickTag)
-        ch.cTextBuffer.insert_with_tags(ch.cTextBuffer.get_end_iter(),"! ",highlightTag)
-        ch.cTextBuffer.insert(ch.cTextBuffer.get_end_iter(), "Connection to cServer lost!\n")
-        scrollTextView(ch, cServer, cServer.settings.statusTColor)
+        nickTag = ch.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.nickColor)#Blue-ish
+        timeTag = ch.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.timeColor)#Grey    
+        highlightTag = ch.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.highlightColor)#Red
 
-    nickTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.nickColor)#Blue-ish
-    timeTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.timeColor)#Grey    
-    highlightTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=cServer.settings.highlightColor)#Red
-    #!!!
-    cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),"!",highlightTag)
+
+        ch.cTextBuffer.insert_with_tags(ch.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
+        if error == "":
+            #!!!
+            ch.cTextBuffer.insert_with_tags(ch.cTextBuffer.get_end_iter()," !",highlightTag)
+            ch.cTextBuffer.insert_with_tags(ch.cTextBuffer.get_end_iter(),"!",nickTag)
+            ch.cTextBuffer.insert_with_tags(ch.cTextBuffer.get_end_iter(),"! ",highlightTag)
+            ch.cTextBuffer.insert_with_tags(ch.cTextBuffer.get_end_iter(), "Connection to server lost!\n",highlightTag)
+        else:
+            ch.cTextBuffer.insert_with_tags(ch.cTextBuffer.get_end_iter()," >",highlightTag)
+            ch.cTextBuffer.insert_with_tags(ch.cTextBuffer.get_end_iter(),"!",nickTag)
+            ch.cTextBuffer.insert_with_tags(ch.cTextBuffer.get_end_iter(),"< ",highlightTag)
+            ch.cTextBuffer.insert(ch.cTextBuffer.get_end_iter(), error.replace("ERROR :","") + "\n")
+
+        scrollTxtViewColorTItem(ch, cServer, otherStuff.settings.statusTColor)
+
+    nickTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.nickColor)#Blue-ish
+    timeTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.timeColor)#Grey    
+    highlightTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.highlightColor)#Red
+    cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
+    if error == "":
+        #!!!
+        cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter()," !",highlightTag)
+        cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),"!",nickTag)
+        cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),"! ",highlightTag)
+        cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(), "Connection to server lost!\n",highlightTag)
+    else:
+        cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter()," >",highlightTag)
+        cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),"!",nickTag)
+        cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),"< ",highlightTag)
+        cServer.cTextBuffer.insert(cServer.cTextBuffer.get_end_iter(), error.replace("ERROR :","") + "\n")
+
+    scrollTxtViewColorTItem(cServer, cServer, otherStuff.settings.statusTColor)
+
+"""
+onKillMsg
+When a kill message is received.
+"""
+def onKillMsg(cResp, cServer, otherStuff):
+    #Get the textbuffer for each channel
+    for ch in cServer.channels:
+        nickTag = ch.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.nickColor)#Blue-ish
+        timeTag = ch.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.timeColor)#Grey    
+        highlightTag = ch.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.highlightColor)#Red
+
+
+        ch.cTextBuffer.insert_with_tags(ch.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
+        ch.cTextBuffer.insert_with_tags(ch.cTextBuffer.get_end_iter(), " >",highlightTag)
+        ch.cTextBuffer.insert_with_tags(ch.cTextBuffer.get_end_iter(), "!",nickTag)
+        ch.cTextBuffer.insert_with_tags(ch.cTextBuffer.get_end_iter(), "< ",highlightTag)
+        ch.cTextBuffer.insert_with_tags(ch.cTextBuffer.get_end_iter(), cResp.nick + " has disconnected/killed you from the server\n",highlightTag)
+
+        scrollTxtViewColorTItem(ch, cServer, otherStuff.settings.statusTColor)
+
+    nickTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.nickColor)#Blue-ish
+    timeTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.timeColor)#Grey    
+    highlightTag = cServer.cTextBuffer.create_tag(None,foreground_gdk=otherStuff.settings.highlightColor)#Red
+    cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),strftime("[%H:%M:%S]", localtime()),timeTag)
+
+    cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter()," >",highlightTag)
     cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),"!",nickTag)
-    cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),"! ",highlightTag)
-    cServer.cTextBuffer.insert(cServer.cTextBuffer.get_end_iter(), "Connection to server lost!\n")
-    scrollTxtViewColorTItem(cServer, cServer, cServer.settings.statusTColor)
+    cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(),"< ",highlightTag)
+    cServer.cTextBuffer.insert_with_tags(cServer.cTextBuffer.get_end_iter(), cResp.nick + " has disconnected/killed you from the server\n",highlightTag)
+
+    scrollTxtViewColorTItem(cServer, cServer, otherStuff.settings.statusTColor)
+
+
 
 #!--IRC EVENTS END--!#
+"""
+Scrolls the textView and colors the TreeView item
+"""
 def scrollTxtViewColorTItem(ch, cServer, color):
     #Get the selected iter
     model, selected = cServer.listTreeView.get_selection().get_selected()
@@ -867,13 +957,92 @@ def scrollTxtViewColorTItem(ch, cServer, color):
         elif color != None and newlySelected != ch.cName:
             cServer.listTreeStore.set_value(ch.cTreeIter, 2, color) #Set the channels this message was sent to, TreeIter color.
     elif ch.cType == "server":
-        pDebug(newlySelected + " " + ch.cAddress)
-        if newlySelected == ch.cAddress:#TODO: It should be ch.cName(server.cName), the mainForm uses cAddress though...CHANGE!
+        pDebug(newlySelected + " " + ch.cAddress.cAddress)
+        if newlySelected == ch.cAddress.cAddress:#TODO: It should be ch.cName(server.cName), the mainForm uses cAddress though...CHANGE!
             #Scroll the TextView to the bottom...                                   
             endMark = ch.cTextBuffer.create_mark(None, ch.cTextBuffer.get_end_iter(), True)
             cServer.chatTextView.scroll_to_mark(endMark, 0)
         elif color != None and newlySelected != ch.cName:
             cServer.listTreeStore.set_value(ch.cTreeIter, 2, color) #Set the channels this message was sent to, TreeIter color.
+
+"""
+Formats text into mIRC colors(also bold and italics) and also HTML Colors(Like conspire does it)
+returns the text with no mIRC crap in it
+"""
+def formatAndInsertText(TextBuffer, textIter, text):
+
+    newText = text.replace("\n","").replace("\r","")
+    endMark=textIter
+    lineOffsetBAddMsg=endMark.get_line_offset()
+    import re
+    import mIRCParser
+    #txtNoMIrcStuff = re.sub("\x03(\d+(,\d+|\d+)|)","",text).replace("\x02","").replace("","").replace("","")
+    txtNoMIrcStuff = mIRCParser.removeFormatting(text)
+
+    #pDebug(txtNoMIrcStuff)
+    TextBuffer.insert(textIter, txtNoMIrcStuff)
+
+    m = mIRCParser.parse(newText)
+    #pDebug(m)
+    if len(m) != 0:
+        for i in m:
+            #pDebug(i)
+            #Colors
+            if i[2].startswith("\x03"):
+                #Check if it's a Hex color or a mIRC color
+                if i[2][1:].startswith("#"):
+                    #TODO:Hex colors
+                    pass
+                else:
+                    #mIRC Colors
+                    try:
+                        match = re.search("\x03((\d+|)(,\d+|\d+)|)", i[2])
+                        if "," not in match.group(0):
+                            mIRCTxtColor = match.group(0).replace("\x03", "")
+                            if len(mIRCTxtColor) > 2: mIRCTxtColor = mIRCTxtColor[:2]
+                            pDebug(mIRCTxtColor)
+                            import mIRCColors
+                            mIRCGdkColor = mIRCColors.mIRCColors.get(int(mIRCTxtColor))
+                            textTag = TextBuffer.create_tag(None,foreground_gdk=mIRCGdkColor)
+                        else:
+                            fg, bg = match.group(0).replace("\x03","").split(",")
+                            pDebug(fg + bg)
+                            import mIRCColors
+                            fgC, bgC = None, None
+                            if fg != '':
+                                fgC = mIRCColors.mIRCColors.get(int(fg))
+                            if bg != '':
+                                bgC = mIRCColors.mIRCColors.get(int(bg))
+
+                            textTag = TextBuffer.create_tag(None, foreground_gdk=fgC, background_gdk=bgC)
+                    except:
+                        import traceback;traceback.print_exc()
+                        pDebug("Error getting mIRC color.." + mIRCTxtColor + " " + i[2])
+                        return
+            #Colors END
+            #Bold
+            if i[2].startswith("\x02"):
+                import pango
+                textTag = TextBuffer.create_tag(None, weight=pango.WEIGHT_BOLD)
+            #Underline
+            if i[2].startswith(""):
+                import pango
+                textTag = TextBuffer.create_tag(None, underline=pango.UNDERLINE_SINGLE)
+                
+            endMark=TextBuffer.get_end_iter()
+
+            if text.endswith("\n"):
+                startIter=TextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + i[0])
+            else:
+                startIter=TextBuffer.get_iter_at_line_offset(endMark.get_line(), lineOffsetBAddMsg + i[0])
+
+            if text.endswith("\n"):
+                endIter=TextBuffer.get_iter_at_line_offset(endMark.get_line() - 1, lineOffsetBAddMsg + i[1])
+            else:
+                endIter=TextBuffer.get_iter_at_line_offset(endMark.get_line(), lineOffsetBAddMsg + i[1])
+            TextBuffer.apply_tag(textTag, startIter, endIter)
+            
+    return txtNoMIrcStuff
 
 
 import inspect
