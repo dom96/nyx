@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 from IRCLibrary import IRCHelper,ResponseParser
 #EntryBox Activated, Checks for any commands, like /j or /join.
-def entryBoxCheck(text,server,listTreeView):
+def entryBoxCheck(text, server, listTreeView, selectedChan):
     if text.startswith("/j") or text.startswith("/join"):
         IRCHelper.join(server,text.replace("/j ","").replace("/join ",""),server.listTreeStore)
         return True
+        
     if text.startswith("/msg"):
         splitText = text.replace("/msg ","").split(" ")
         count = 0     
@@ -16,6 +17,7 @@ def entryBoxCheck(text,server,listTreeView):
 
         IRCHelper.cmdSendMsg(server,splitText[0],msg)
         return True
+        
     if text.startswith("/nick"):
         print "NICK " + text.replace("/nick ","")
         server.cSocket.send("NICK " + text.replace("/nick ","") + "\r\n")
@@ -76,6 +78,19 @@ def entryBoxCheck(text,server,listTreeView):
     if text.startswith("/quit"):
         pDebug("\033[1;34m" + "QUIT :%s" % (text[5:]) + "\\r\\n\033[1;m")
         server.cSocket.send("QUIT :%s\r\n" % (text[5:]))
+        return True
+        
+    if text.startswith("/eval"):
+        try:
+            output = eval(' '.join(text.split()[1:]))
+            pDebug(output)
+            IRCHelper.cmdSendMsg(server, selectedChan, str(' '.join(text.split()[1:])) + " = " + str(output))
+        except:
+            pDebug("Error occured with /eval")
+        return True
+
+    if text.startswith("//"):
+        IRCHelper.cmdSendMsg(server, selectedChan, text[1:])
         return True
 
     if text.startswith("/") and text.startswith("//") == False:

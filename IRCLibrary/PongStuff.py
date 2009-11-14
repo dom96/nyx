@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-IRCLibrary - Library for the IRC protocol
+Nyx - A powerful IRC Client
 Copyright (C) 2009 Mad Dog Software 
 http://maddogsoftware.co.uk - morfeusz8@yahoo.co.uk
 
@@ -58,9 +58,10 @@ def channelModeStuff(server,i,otherStuff):
         msgCode=i.split(" ")[1]
     else:
         return 
+        
+    datParsed = ResponseParser.parseServerRegex(i)[0]
     
     if msgCode=="324":
-        datParsed = ResponseParser.parseServerRegex(i)[0]
         for ch in server.channels:
             if ch.cName == datParsed.channel:
                 ch.cMode = datParsed.msg
@@ -69,8 +70,6 @@ def channelModeStuff(server,i,otherStuff):
             if event.eventName == "onChannelModeChange" and event.cServer == server:
                 gobject.idle_add(event.aFunc,datParsed,server,otherStuff)
     if msgCode=="329":
-        datParsed = ResponseParser.parseServerRegex(i)[0]
-
         for event in IRC.eventFunctions:
             if event.eventName == "onChannelModeChange" and event.cServer == server:
                 gobject.idle_add(event.aFunc,datParsed,server,otherStuff)
@@ -85,21 +84,19 @@ def topicStuff(server,i,otherStuff):
     else:
         return
 
+    datParsed = ResponseParser.parseServerRegex(i)[0]
+    
     if msgCode == "332":
-        datParsed = ResponseParser.parseServerRegex(i)[0]
         for ch in server.channels:
             if ch.cName == datParsed.channel:
                 ch.cTopic = datParsed.msg
 
         for event in IRC.eventFunctions:
             if event.eventName == "onTopicChange" and event.cServer == server:
-                pDebug("calling onTopicChange")
                 gobject.idle_add(event.aFunc,datParsed,server,otherStuff)
     elif msgCode == "333":
-        datParsed = ResponseParser.parseServerRegex(i)[0]
         for event in IRC.eventFunctions:
             if event.eventName == "onTopicChange" and event.cServer == server:
-                pDebug("calling onTopicChange")
                 gobject.idle_add(event.aFunc,datParsed,server,otherStuff)
 
     elif "TOPIC" in i:
@@ -111,7 +108,6 @@ def topicStuff(server,i,otherStuff):
                     ch.cTopic = m.msg
             for event in IRC.eventFunctions:
                 if event.eventName == "onTopicChange" and event.cServer == server:
-                    pDebug("calling onTopicChange")
                     gobject.idle_add(event.aFunc,m,server,otherStuff)
 
 def pongResp(server,i):
@@ -182,43 +178,6 @@ def modeResp(server, i, otherStuff):
                                 if event.eventName == "onUserOrderUpdate" and event.cServer == server:
                                     #event.aFunc(ch,server,cIndex,usr)#Might couse some random SEGFAULTS!!!!!!!!!!!!!!
                                     gobject.idle_add(event.aFunc, i[1], server, cIndex, i[0], priority=gobject.PRIORITY_LOW)
-
-
-                        """
-                        #Find the cTreeIter
-                        for ch in server.channels:
-                            if ch.cName.lower() == m.channel.lower():
-                                for usr in ch.cUsers:
-                                    for usrWMChange in usersWhoModeChanged:
-                                        if usr.cNick.lower() == usrWMChange.lower():
-                                            #And remove it(Because i have to change the position of it anyway)
-                                            pDebug(str(usr.cTreeIter) + " " + usr.cNick + " " + m.msg + " " + ch.cName)
-                                            cTreeIter = usr.cTreeIter
-                                            for event in IRC.eventFunctions:
-                                                if event.eventName == "onUserRemove" and event.cServer == server:
-                                                    gobject.idle_add(event.aFunc,ch,server,cTreeIter,None)
-
-                        for ch in server.channels:
-                            if ch.cName.lower() == m.channel.lower():
-                                for usr in ch.cUsers:
-                                    for usrWMChange in usersWhoModeChanged:
-                                        if usr.cNick.lower() == usrWMChange.lower():
-                                            pDebug(usr.cMode)
-                                            #Set the new MODE for the user.
-                                            if nM.startswith("-"):
-                                                for char in nM.replace("-",""):
-                                                    usr.cMode = usr.cMode.replace(char,"")
-                                                pDebug("usr.cMode = " + usr.cMode)
-                                            else:
-                                                usr.cMode += nM
-    
-                                            cIndex = findIndex(usr,server,ch)
-                                            
-                                            for event in IRC.eventFunctions:
-                                                if event.eventName == "onUserJoin" and event.cServer == server:
-                                                    #event.aFunc(ch,server,cIndex,usr)#Might couse some random SEGFAULTS!!!!!!!!!!!!!!
-                                                    gobject.idle_add(event.aFunc, ch, server, cIndex, usr, priority=gobject.PRIORITY_LOW)
-                    """
 
                     #If it's not a user's mode being changed...It's most likely a channels mode
                     else:
@@ -480,18 +439,19 @@ def quitResp(server,i,otherStuff):#The quit message
     #!--QUIT MSG END--!#
 
 def joinResp(server,i,otherStuff):#The join message
-    global USERS
     #!--JOIN MSG--!#
     if "JOIN" in i:
         m = ResponseParser.parseMsg(i,False)
         if m is not False:
             #Make sure it's a JOIN msg.
             if m.typeMsg == "JOIN":
-                #If it's you that JOINed, check if there is a TreeItem already for this channel
+
+                #If it's you that JOINed, check if there is a TreeIter already for this channel
                 #and if not then add one.
-                if m.nick == server.cNick:
+                if m.nick.lower() == server.cNick.lower():
                     addNewUser=True
 
+                    #Check if there is already a channel created...
                     for ch in server.channels:
                         if ch.cName == m.channel:
                             addNewUser=False
@@ -661,6 +621,7 @@ def findIndex(usr,cServer,cChannel):
         #2.Add the user who JOINed, to the list.
         normUsers.append(usr.cNick)
         pDebug(usr.cNick)
+        pDebug(normUsers)
         #3.Sort the list
         normUsers.sort(key=str.lower)
         #4.Find the index of where the nick that JOINed is.
@@ -708,48 +669,52 @@ def privmsgResp(server,i,otherStuff):#the private msg(Normal message)
     if "PRIVMSG" in i:
         m = ResponseParser.parseMsg(i,False)
         if m is not False:
-            #pDebug(m.msg)
-            #!--CTCP VERSION--!#
-            if m.msg.startswith("VERSION"):
-                import platform
-                IRCHelper.sendNotice(server,m.nick,"VERSION Nyx 0.1 111009 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/ - running on " + platform.platform() + "")
-            #!--CTCP VERSION END--!#
-            #!--CTCP TIME--!#
-            if m.msg.startswith("TIME"):
-                IRCHelper.sendNotice(server,m.nick,"TIME " + strftime("%b %d %H:%M:%S %Z", localtime()) + "")
-                #TIME Aug 02 12:56:09 BST
-            #!--CTCP TIME END--!#
-            #!--CTCP PING--!#
-            if m.msg.startswith("PING"):
-                IRCHelper.sendNotice(server,m.nick,m.msg)
-                #PING 123456789
-            #!--CTCP PING END--!#
-            
-            #If someone sent YOU a PRIVMSG(i.e to you, not a channel), then make a new 'channel' for that user.
-            if m.channel == server.cNick and m.msg.startswith("") == False:
-                addNewUser=True
-                #:Amrykid!Nyx@sirc-e458c87b.wi.localnet.com PRIVMSG dom96 :pie
-                for ch in server.channels:
-                    if ch.cName.lower() == m.nick.lower():
-                        addNewUser=False
+            #Make sure it's PRIVMSG
+            if m.typeMsg == "PRIVMSG":
+                #pDebug(m.msg)
+                #!--CTCP VERSION--!#
+                if m.msg.startswith("VERSION"):
+                    import platform
+                    IRCHelper.sendNotice(server,m.nick,"VERSION Nyx 0.1 111009 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/ - running on " + platform.linux_distribution()[0] + "")
+                #!--CTCP VERSION END--!#
+                #!--CTCP TIME--!#
+                if m.msg.startswith("TIME"):
+                    IRCHelper.sendNotice(server,m.nick,"TIME " + strftime("%b %d %H:%M:%S %Z", localtime()) + "")
+                    #TIME Aug 02 12:56:09 BST
+                #!--CTCP TIME END--!#
+                #!--CTCP PING--!#
+                if m.msg.startswith("PING"):
+                    IRCHelper.sendNotice(server,m.nick,m.msg)
+                    #PING 123456789
+                #!--CTCP PING END--!#
+                
+                #If someone sent YOU a PRIVMSG(i.e to you, not a channel), then make a new 'channel' for that user.
+                if m.channel == server.cNick and m.msg.startswith("") == False:
+                    addNewUser=True
+                    #:Amrykid!Nyx@sirc-e458c87b.wi.localnet.com PRIVMSG dom96 :pie
+                    for ch in server.channels:
+                        if ch.cName.lower() == m.nick.lower():
+                            addNewUser=False
 
-                if addNewUser==True:
-                    nChannel = IRC.channel()
-                    nChannel.cName = m.nick
-                    nChannel.cTextBuffer = gtk.TextBuffer()
-                    nChannel.UserListStore = None
-                    try:
-                        nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.nick,None,otherStuff.settings.normalTColor])
-                    except:
-                        import traceback; traceback.print_exc()
-                    nChannel.cMsgBuffer = [] #This fixes the weird problem with the queue being in the wrong channel.
-                    #Add the user who PM'ed you to the Channel list
-                    server.channels.append(nChannel)
+                    if addNewUser==True:
+                        nChannel = IRC.channel()
+                        nChannel.cName = m.nick
+                        nChannel.cTextBuffer = gtk.TextBuffer()
+                        nChannel.cType = "chanusr"
+                        nChannel.cTopic = m.host
+                        nChannel.UserListStore = None
+                        try:
+                            nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.nick,None,otherStuff.settings.normalTColor])
+                        except:
+                            import traceback; traceback.print_exc()
+                        nChannel.cMsgBuffer = [] #This fixes the weird problem with the queue being in the wrong channel.
+                        #Add the user who PM'ed you to the Channel list
+                        server.channels.append(nChannel)
 
-            #Call all the onPrivMsg events
-            for event in IRC.eventFunctions:
-                if event.eventName == "onPrivMsg" and event.cServer == server:
-                    gobject.idle_add(event.aFunc,m,server,otherStuff)
+                #Call all the onPrivMsg events
+                for event in IRC.eventFunctions:
+                    if event.eventName == "onPrivMsg" and event.cServer == server:
+                        gobject.idle_add(event.aFunc,m,server,otherStuff)
 
     #!--PRIVMSG STUFF END--!#
 def motdStuff(server, i, otherStuff):#MOTD stuff

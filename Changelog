@@ -1,5 +1,18 @@
 I know this isn't correct ChangeLog format...
-2009-10-31  Dominik Picheta  <dominikpicheta@googlemail.com>
+2009-11-13  Dominik Picheta  <dominikpicheta@googlemail.com>
+
+    * Added more themes stuff
+    * Fixed a Mode change bug
+    * Cleaned up the code a bit.
+    * Added /eval
+
+2009-11-09  Dominik Picheta  <dominikpicheta@googlemail.com>
+
+    * Added some more themes stuff
+    * Fixed some Encoding problems
+    * Fixed problem with NOTICE AUTH, without ':irc.server.com' in front
+
+2009-11-05  Dominik Picheta  <dominikpicheta@googlemail.com>
 
     * Added themes, now the text that Nyx outputs will be customizable(Still not finished yet)
 

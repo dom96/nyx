@@ -59,18 +59,22 @@ def parse(msg):
             if len(msg) > count + 2:
                 if ((msg[count+1]+msg[count+2]).isdigit() or msg[count+1].isdigit()) == False and ((msg[count+1].isdigit() and 
                 msg[count+2] == ",") or (msg[count+1] == "," and msg[count+2].isdigit())) == False:
+                    #If there isn't a 'digit' after the ^C
                     if len(startCCount) != 0:
-                        returnTuple.append((normalizeIndex(startCCount[0], msg), normalizeIndex(count, msg), msg[startCCount[0]:count]))
-                        startCCount.remove(startCCount[0])
-                        print len(startCCount)
+                        #Add all the colors started....
+                        #<dom96> could anyone explain why, ^C03GreenText^C05RedText^CThis is black ? should it not be green since i'm only closing one color ?
+                        #<Zuthulu> it is intended that $chr(3) without a number stops all previous color codes. if you like a color after it, add the number
+                    
+                        for colorCount in startCCount:
+                            returnTuple.append((normalizeIndex(colorCount, msg), normalizeIndex(count, msg), msg[colorCount:count]))
+                        startCCount = []
                 else:
-                    print "Adding color ",count
-                    #startCCount.append(count)
                     startCCount.insert(0, count)
 
             elif len(startCCount) != 0:
-                returnTuple.append((normalizeIndex(startCCount[0], msg), normalizeIndex(count, msg), msg[startCCount[0]:count]))
-                startCCount.remove(startCCount[0])
+                for colorCount in startCCount:
+                    returnTuple.append((normalizeIndex(colorCount, msg), normalizeIndex(count, msg), msg[colorCount:count]))
+                startCCount = []
 
         #Normal or if it's the end of the message and there is a color..
         if i == "" or (len(startCCount) != 0 and (count + 1) == len(msg)) or ((count + 1) == len(msg) and (bold == True or underline == True)):
@@ -82,17 +86,11 @@ def parse(msg):
                 underline = False
             if len(startCCount) != 0:
                 #Loop through each color in the 'Colors List'(startCCount)
-                print startCCount
                 for colorCount in startCCount:
-                    print (normalizeIndex(colorCount, msg), normalizeIndex(count + 1, msg), msg[colorCount:count + 1])
                     returnTuple.append((normalizeIndex(colorCount, msg), normalizeIndex(count + 1, msg), msg[colorCount:count + 1]))
                 startCCount = []
 
         count += 1
-
-    #03www04.05google06.com
-    #That seems to be working better in Nyx then in xchat/mIRC
-    #If i understand how they work...
 
     returnTuple.reverse()
     return returnTuple
@@ -138,7 +136,9 @@ def removeFormatting(text):
     return txtNoMIrcStuff
 
 
-#Test
+#-------#
+# Tests #
+#-------#
 #print "03www04.05google06.com"
 #x = parse("03www04.05google06.com")
 #print x
@@ -148,6 +148,6 @@ def removeFormatting(text):
 #print x
 
 #print "03www04.05google06.com"
-#x = parse("2,200\_|  |_/|___/  \____/ \_| \_/ \___| \__|")
-#print x
+x = parse("03Green05RedBlack")
+print x
                 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-IRCLibrary - Library for the IRC protocol
+Nyx - A powerful IRC Client
 Copyright (C) 2009 Mad Dog Software 
 http://maddogsoftware.co.uk - morfeusz8@yahoo.co.uk
 
@@ -123,7 +123,7 @@ def parseServer(data):
 
     return mList
 
-def parseServerRegex(data):
+def parseServerRegex1(data):
     mList = []
     splitData = string.split(data,"\n")
     for i in splitData:
@@ -145,6 +145,35 @@ def parseServerRegex(data):
             pDebug("\033[1;40m\033[1;33mNo match for the response\033[1;m\033[1;m")
         mList.append(m)
 
+    return mList
+    
+def parseServerRegex(data):
+    mList = []
+    splitData = string.split(data,"\n")
+    for i in splitData:
+        m = serverMsg()
+        
+        import re
+        reMatch = re.search("([^:].+?\s)(.+?\s)(.+?\s)(.+)", i)
+        
+        try:
+            m.server = reMatch.group(1).replace(" ","")#;pDebug("m.server="+m.server)
+            m.code = reMatch.group(2).replace(" ","")#;pDebug("m.code="+m.code)
+            m.nick = reMatch.group(3).replace(" ","")#;pDebug("m.nick="+m.nick)
+            m.channel = reMatch.group(3).replace(" ","")#;pDebug("m.channel="+m.nick)
+            
+            m.msg = reMatch.group(4)
+            if m.msg.startswith("#"): #TODO: This might cause problems for channels which don't start with # ?
+                m.channel = m.msg.split(" ")[0]
+                m.msg = m.msg[len(m.channel) + 1:] #+1 for the ' '(space)          
+            
+            if m.msg[:1] == ":":
+                m.msg = m.msg[1:]
+            #pDebug("m.msg=" + m.msg)
+        except:
+            pDebug("\033[1;40m\033[1;33mNo match for the response\033[1;m\033[1;m")
+        mList.append(m)
+        
     return mList
 
 
@@ -332,15 +361,6 @@ def parseKick(data):
             m.msg = reMatch.group(0)[1:]
         except:
             pDebug("\033[1;40m\033[1;33mNo match for the KICK message\033[1;m\033[1;m")
-
-        """
-        for i in range(len(splitMsg)):
-            if i > msgInt:
-                if i != msgInt+1:
-                    m.msg += unicode(splitMsg[i], 'utf-8') + " "
-                elif i == msgInt+1 and splitMsg[i].startswith(":"):
-                    m.msg += unicode(splitMsg[i][1:], 'utf-8') + " "
-    """
     except:
         traceback.print_exc()
         return False  
@@ -361,7 +381,9 @@ def parseMode(data):
         #print splitMsg
         m = privMsg()
         m.nick = string.strip(string.split(splitMsg[0],"!")[0],":")
-        m.host = string.strip(string.split(splitMsg[0],"!")[1],":")
+        if "!" in splitMsg[0]:        
+            m.host = string.strip(string.split(splitMsg[0],"!")[1],":")
+
         m.typeMsg = string.strip(splitMsg[1],":")
         try:
             m.channel = string.strip(splitMsg[2],":").replace(" ","")        
@@ -374,9 +396,15 @@ def parseMode(data):
         for i in range(len(splitMsg)):
             if i > msgInt:
                 if i != msgInt:
-                    m.msg += unicode(splitMsg[i], 'utf-8') + " "
+                    #If decoding from utf-8 fails
+                    #Decode from iso8859, and then to utf-8
+                    try:
+                        m.msg += splitMsg[i].decode("utf-8", "strict") + " "
+                    except:
+                        m.msg += splitMsg[i].decode("iso8859").encode("utf-8") + " "
+        if m.msg[-1:] == " ":
+            m.msg = m.msg[:-1]
         
-        m.msg = m.msg
     except:
         pDebug("\033[1;40m\033[1;33mError in parseMode\033[1;m\033[1;m")
         traceback.print_exc()

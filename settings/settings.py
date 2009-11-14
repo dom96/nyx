@@ -188,41 +188,80 @@ class theme:
         for styleTag in styleTags:
             name = XmlHelper.getAttribute(styleTag.attributes,"name")
             insert = XmlHelper.getAttribute(styleTag.attributes,"insert")
-            loadedTheme.styles.append(dict({'name': self.replaceEscapes(name), "insert": self.replaceEscapes(insert)}))
+            ifStatmnt = XmlHelper.getAttribute(styleTag.attributes,"if")
+            
+            
+            loadedTheme.styles.append(dict({'name': self.replaceEscapes(name), "insert": self.replaceEscapes(insert), "if": self.replaceEscapes(ifStatmnt)}))
         return loadedTheme
         
     """This function replaces escapes for example \x03"""
     def replaceEscapes(self, text):
-        return text.replace("\\x03","\x03").replace("\\x02","\x02")
+        return text.replace("\\x03","\x03").replace("\\x02","\x02").replace("\\x1f", "\x1f")
         
         
     """
     Parses a style specified('name') and returns the output.
     Used in IRCEvents
     """
-    def parseStyle(self, name, nick, host, msgType, channel, msg):
-        pDebug(self)
+    def parseStyle(self, name, nick, host, msgType, channel, msg, server, nickColor="01", nick1="", nickColor1="01"):
+        nickColor = str(nickColor)
+
         for style in self.styles:
-            if style["name"] == name:
+            ifStatmnt = self.checkIfStatmnt(style["if"], nick, host, msgType, channel, msg, server, nickColor, nick1, nickColor1)
+            if style["name"] == name and ifStatmnt:
                 output = style["insert"]
                 #Loop through the replaces and replace them in output
                 
-                for replace in self.replaces:
-                    textReplace = self.replaceText(replace["text"], nick, host, msgType, channel, msg)
-                    output = self.regexReplace("(?<!\\\\)" + replace["key"], output, textReplace)
-
-                    #Replace any Escaped 'replaces', for example \%time%
-                    output = self.regexReplace("\\\\" + replace["key"], output, replace["key"])
+                output = self.replaceReplaces(output, nick, host, msgType, channel, msg, server, nickColor, nick1, nickColor1)
                     
                 #replaceText after replacing 'replaces', so that replaces don't replace
                 #stuff in (msg) or (channel)
-                output = self.replaceText(output, nick, host, msgType, channel, msg)
+                output = self.replaceText(output, nick, host, msgType, channel, msg, server, nickColor, nick1, nickColor1)
                 return output
                 
-    
         return False
+        
+    """Checks the if statements, returns True if the statement returns True"""
+    def checkIfStatmnt(self, ifStatmnt, nick, host, msgType, channel, msg, server, nickColor="01", nick1="", nickColor1="01"):
+        import re
+
+        if "==" in ifStatmnt:
+            #TODO: think of a way that you can compare text with spaces.... $nM$ == Text With Spaces
+            ifStatmnt = ifStatmnt.replace(" ","")
+            pos = ifStatmnt.find("==")
+            first = ifStatmnt[:pos]  #Before the ==
+            second = ifStatmnt[pos+2:]  #After the ==
+            
+            first = self.replaceReplaces(first, nick, host, msgType, channel, msg, server, nickColor, nick1, nickColor1)
+            second = self.replaceReplaces(second, nick, host, msgType, channel, msg, server, nickColor, nick1, nickColor1)
     
-    def regexReplace(self,pattern, text, replaceWith):
+            first = self.replaceText(first, nick, host, msgType, channel, msg, server, nickColor, nick1, nickColor1)
+            second = self.replaceText(second, nick, host, msgType, channel, msg, server, nickColor, nick1, nickColor1)
+        
+            #Check if this statement is true.
+            return first == second
+        
+        elif "!=" in ifStatmnt:
+            #TODO: think of a way that you can compare text with spaces.... $nM$ == Text With Spaces
+            ifStatmnt = ifStatmnt.replace(" ","")
+            
+            pos = ifStatmnt.find("!=")
+            first = ifStatmnt[:pos]  #Before the !=
+            second = ifStatmnt[pos+2:]  #After the !=
+    
+            first = self.replaceReplaces(first, nick, host, msgType, channel, msg, server, nickColor, nick1, nickColor1)
+            second = self.replaceReplaces(second, nick, host, msgType, channel, msg, server, nickColor, nick1, nickColor1)
+    
+            first = self.replaceText(first, nick, host, msgType, channel, msg, server, nickColor, nick1, nickColor1)
+            second = self.replaceText(second, nick, host, msgType, channel, msg, server, nickColor, nick1, nickColor1)
+            
+            #Check if this statement is true.
+            return first != second
+            
+        return True
+            
+    
+    def regexReplace(self, pattern, text, replaceWith):
         import re
         m = re.finditer(pattern, text)
         #When the length of text changes you need to change the matches index's
@@ -243,10 +282,28 @@ class theme:
         return text
     
     
-    """Replaces the stuff in between $, $....$"""            
-    def replaceText(self, text, nick, host, msgType, channel, msg):
+    """Replaces '<replace .../>' tags"""
+    def replaceReplaces(self, text, nick, host, msgType, channel, msg, server, nickColor="01", nick1="", nickColor1="01"):
         import re
-        m = re.finditer("\\$.+?\\$", text)
+        for replace in self.replaces:
+            #Only check this replace against the text
+            #If it matches, otherwise it'll just create a infinite loop
+            #since i call, self.replaceReplaces
+            if len(re.findall("(?<!\\\\)" + replace["key"], text)) > 0: 
+                textReplace = self.replaceReplaces(replace["text"], nick, host, msgType, channel, msg, server, nickColor, nick1, nickColor1)
+                textReplace = self.replaceText(textReplace, nick, host, msgType, channel, msg, server, nickColor, nick1, nickColor1)
+                text = self.regexReplace("(?<!\\\\)" + replace["key"], text, textReplace)
+
+                #Replace any Escaped 'replaces', for example \%time%
+                text = self.regexReplace("\\\\" + replace["key"], text, replace["key"])
+        return text
+    
+    
+    
+    """Replaces the stuff in between $, $....$"""            
+    def replaceText(self, text, nick, host, msgType, channel, msg, server, nickColor="01", nick1="", nickColor1="01"):
+        import re
+        m = re.finditer("\\{.+?\\}", text)
         #When the length of text changes you need to change the matches index's
         plusIndex = 0
         minusIndex = 0
@@ -254,11 +311,10 @@ class theme:
         for match in m:
             lenBeforeReplace = len(text) #Length of text before the text is replaced
             #----------
-            matchText = match.group(0).replace("$","")
+            matchText = match.group(0).replace("{","").replace("}","")
             leftText = text[:(match.start(0) - minusIndex) + plusIndex]
             rightText = text[(match.end(0) - minusIndex) + plusIndex:]
             
-            pDebug(matchText)
             if matchText.startswith("n"):
                 #Nyx replace(class? i don't know what to call it lol)
                 matchText = matchText[1:]
@@ -274,6 +330,22 @@ class theme:
                     text = leftText + channel + rightText
                 elif matchText.lower() == "m":
                     text = leftText + msg + rightText
+                elif matchText.lower() == "nc":
+                    text = leftText + nickColor + rightText   
+                elif matchText.lower() == "n1":
+                    text = leftText + nick1 + rightText   
+                elif matchText.lower() == "c1":
+                    text = leftText + nickColor1 + rightText   
+                    
+                
+            elif matchText.startswith("s"):
+                #Server
+                matchText = matchText[1:]
+                #Now what to replace this with.
+                
+                if matchText.lower() == "n":
+                    text = leftText + server.cNick + rightText
+            
                     
             elif matchText.startswith("t"):
                 matchText = matchText[1:]

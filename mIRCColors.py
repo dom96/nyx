@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-IRCLibrary - Library for the IRC protocol
+Nyx - A powerful IRC Client
 Copyright (C) 2009 Mad Dog Software 
 http://maddogsoftware.co.uk - morfeusz8@yahoo.co.uk
 
