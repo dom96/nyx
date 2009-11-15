@@ -229,7 +229,6 @@ def servResp(server, i, otherStuff):
     try:
         if (splitI[1] in numericCode()):
             datParsed = ResponseParser.parseServerRegex(i)
-            
             #Some stuff that has to be done, e.g.433(Nickname already in use), 432(Nickname reserved for someone...? Like ChanServ)
             if splitI[1] == "433" or splitI[1] == "432":
                 #If the MOTD has been received that means the user connected
@@ -462,7 +461,8 @@ def joinResp(server,i,otherStuff):#The join message
                         nChannel.cTextBuffer = gtk.TextBuffer()
                         nChannel.UserListStore = gtk.ListStore(str,str)
                         try:
-                            nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.channel,None,otherStuff.settings.normalTColor])
+                            nChannel.cTreeIter = server.listTreeStore.append(server.cTreeIter, \
+                            [m.channel, None, otherStuff.settings.normalTColor, "channel"])
                         except:
                             import traceback; traceback.print_exc()
                         nChannel.cMsgBuffer = [] #This fixes the weird problem with the queue being in the wrong channel.
@@ -675,7 +675,7 @@ def privmsgResp(server,i,otherStuff):#the private msg(Normal message)
                 #!--CTCP VERSION--!#
                 if m.msg.startswith("VERSION"):
                     import platform
-                    IRCHelper.sendNotice(server,m.nick,"VERSION Nyx 0.1 111009 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/ - running on " + platform.linux_distribution()[0] + "")
+                    IRCHelper.sendNotice(server,m.nick,"VERSION Nyx 0.1 151309 Copyleft 2009 Mad Dog software - http://sourceforge.net/projects/nyxirc/ - running on " + platform.linux_distribution()[0] + "")
                 #!--CTCP VERSION END--!#
                 #!--CTCP TIME--!#
                 if m.msg.startswith("TIME"):
@@ -704,7 +704,8 @@ def privmsgResp(server,i,otherStuff):#the private msg(Normal message)
                         nChannel.cTopic = m.host
                         nChannel.UserListStore = None
                         try:
-                            nChannel.cTreeIter = server.listTreeStore.append(server.listTreeStore.get_iter(0),[m.nick,None,otherStuff.settings.normalTColor])
+                            nChannel.cTreeIter = server.listTreeStore.append(server.cTreeIter, \
+                            [m.nick, None, otherStuff.settings.normalTColor, "user"])
                         except:
                             import traceback; traceback.print_exc()
                         nChannel.cMsgBuffer = [] #This fixes the weird problem with the queue being in the wrong channel.
@@ -729,6 +730,7 @@ def motdStuff(server, i, otherStuff):#MOTD stuff
     #MOTD Start code, now i need to add the whole MOTD to one string until the MOTD END(376)
     if ("375" == msgCode): 
         MOTDStarted = True
+        MOTD = ""
     #Make sure it's a 376 message and that the message doesn't contain PRIVMSG or NOTICE, 
     #couse if the PRIVMSG or notice contains 376 it's gonna print the MOTD again
     elif ("376" == msgCode):

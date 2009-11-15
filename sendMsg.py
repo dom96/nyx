@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-from IRCLibrary import IRCHelper,ResponseParser
+from IRCLibrary import IRCHelper,ResponseParser,IRC
 #EntryBox Activated, Checks for any commands, like /j or /join.
-def entryBoxCheck(text, server, listTreeView, selectedChan):
+def entryBoxCheck(self, text, server, listTreeView, selectedChan, servers, IRC):
     if text.startswith("/j") or text.startswith("/join"):
         IRCHelper.join(server,text.replace("/j ","").replace("/join ",""),server.listTreeStore)
         return True
@@ -88,6 +88,28 @@ def entryBoxCheck(text, server, listTreeView, selectedChan):
         except:
             pDebug("Error occured with /eval")
         return True
+        
+    if text.startswith("/newserver"):
+        address = text.split()[1]
+        try:
+            port = int(text.split()[2])
+        except:
+            port = 6667
+        from settings import settings
+        serv = settings.sServer()
+        serv.cName = address
+        serv.addresses = []
+        addr = settings.sServer()
+        addr.cAddress = address
+        addr.cPort = port
+        addr.cSsl = False
+        addr.cPass = ""
+        serv.addresses.append(addr)
+        from Form import form_stuff
+        form_stuff.connect_server(self, serv, IRC, servers)
+        return True
+        
+        
 
     if text.startswith("//"):
         IRCHelper.cmdSendMsg(server, selectedChan, text[1:])

@@ -1,4 +1,11 @@
 I know this isn't correct ChangeLog format...
+2009-11-15  Dominik Picheta  <dominikpicheta@googlemail.com>
+
+    * Nyx now checks the 4 value of a TreeIter to determine if it's a channel a server or a user
+    * The server TreeIter now gets added in the connect function(IRC.py)
+    * Added multi-server support! /newserver address port
+    * Fixed a message buffer bug, where you can't send messages AT ALL when there is no channels joined...
+
 2009-11-13  Dominik Picheta  <dominikpicheta@googlemail.com>
 
     * Added more themes stuff

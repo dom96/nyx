@@ -51,6 +51,7 @@ class server():
         self.nicks=[] #List of nicks(The primary nick is the first one, the alternative nicks are the ones after)
         self.cName="" #Name of this server.
         self.cMotd=None #The MOTD Message
+        self.lag = 0 #Lag
 
         self.connected=False #If this server instance is connected.
         self.connectRetries=0 #The number of times you tried connecting and it failed.
@@ -105,8 +106,15 @@ class server():
         except Exception as err:
             pDebug("\033[1;31m" + str(err) + "\033[1;m")
             #If you can't connect to the server, due to a timeout or something else..
+            #Cycle to the next address
             self.cycle_address()
-            return 
+            return
+
+        #Create the TreeIter for this server
+        self.cTreeIter = self.listTreeStore.append(None,[self.cName, gtk.STOCK_NETWORK, otherStuff.settings.normalTColor, "server"])
+        #Select it
+        self.TreeViewSelection = self.listTreeView.get_selection()
+        self.TreeViewSelection.select_iter(self.cTreeIter)
 
         #Set the timeout to None, i.e No timeout error
         self.cSocket.settimeout(None)

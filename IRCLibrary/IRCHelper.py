@@ -104,6 +104,8 @@ def sendMsg(server,cChannel,msg):
 
 
     else:
+        msgSent = False
+    
         for ch in server.channels:
             usrDest=IRC.user() #Made it not None, it couses a bug with or ch.cName == usrDest.cChannel.cName, so i changed it to this...
             if cChannel.startswith("#") == False:
@@ -115,6 +117,7 @@ def sendMsg(server,cChannel,msg):
                 #If the msgBuffer(msg queue) has no messages waiting to be sent, send this message right now.
                 if len(ch.cMsgBuffer) == 0:
                     cmdSendMsg(server,cChannel,msg)
+                    msgSent = True
                     break
                 #If the msgBuffer(msg queue) has messages waiting, add this new message to the end of the queue.
                 else:
@@ -126,8 +129,9 @@ def sendMsg(server,cChannel,msg):
                         time=time.time() + (3*(len(ch.cMsgBuffer)+1))
                     #Else, this is a message to be sent instantly.
                     else:
-                        cmdSendMsg(server,ch.cName,msg)
-                        instantMsg=True
+                        cmdSendMsg(server, ch.cName, msg)
+                        instantMsg = True
+                        msgSent = True
 
                     if instantMsg != True:
                         msgBuff=IRC.msgBuffer()
@@ -142,6 +146,11 @@ def sendMsg(server,cChannel,msg):
                                 gobject.idle_add(event.aFunc,server,len(ch.cMsgBuffer))
 
                     break
+                    
+        #If you can't find a message buffer for a channel or a user, just send the message
+        #TODO: Maybe make it add to the server buffer ??
+        if msgSent == False:
+            cmdSendMsg(server, cChannel, msg)
 
 #A cleaner one function way to send a message
 def cmdSendMsg(server,cChannel,msg):

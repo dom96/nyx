@@ -42,7 +42,7 @@ def setup_form(self):
     self.server_menu_menu = gtk.Menu()    
     #The disconnect item in the Server item
     self.disconnect_menu_item = gtk.ImageMenuItem(gtk.STOCK_DISCONNECT,"Disconnect")
-    self.disconnect_menu_item.connect("activate",lambda x: servers[0].cSocket.send("QUIT :Nyx IRC Client, visit http://sourceforge.net/projects/nyxirc/\r\n"))
+    self.disconnect_menu_item.connect("activate",lambda x: self.get_server().cSocket.send("QUIT :Nyx IRC Client, visit http://sourceforge.net/projects/nyxirc/\r\n"))
     self.server_menu_menu.append(self.disconnect_menu_item)
     self.disconnect_menu_item.show()
 
@@ -132,12 +132,12 @@ def setup_form(self):
     # --All the treeView stuff...
     self.tvcolumn = gtk.TreeViewColumn(None)
 
-    serverTreeIter = self.listTreeStore.append(None,[self.nServer.addresses[0].cAddress, gtk.STOCK_NETWORK, self.settings.normalTColor])
-    self.nServer.cTreeIter = serverTreeIter
+    #serverTreeIter = self.listTreeStore.append(None,[self.nServer.addresses[0].cAddress, gtk.STOCK_NETWORK, self.settings.normalTColor])
+    #self.nServer.cTreeIter = serverTreeIter
 
     #Select that row ^^^        
-    self.selection = self.TreeView1.get_selection()
-    self.selection.select_iter(serverTreeIter)
+    #self.selection = self.TreeView1.get_selection()
+    #self.selection.select_iter(serverTreeIter)
     
     #Add the column, to the treeview
     self.TreeView1.append_column(self.tvcolumn)
@@ -237,7 +237,7 @@ def setup_form(self):
 
     #TextView - For the actual chat...
     self.chatTextView = gtk.TextView()
-    self.chatTextView.set_buffer(self.nServer.cTextBuffer)
+    #self.chatTextView.set_buffer(self.nServer.cTextBuffer)
     self.chatTextView.set_wrap_mode(gtk.WRAP_WORD_CHAR)
     self.chatTextView.set_editable(False)
     self.chatTextView.set_cursor_visible(False)
@@ -264,3 +264,65 @@ def setup_form(self):
     self.chatEntry.connect("activate",self.chatEntry_Activate)
     self.chatEntry.show()
     """TextView/EntryBox/TopicEntryBox END"""
+
+import IRCEvents
+def connect_server(self, settingsServer, IRC, servers):
+
+    nServer = IRC.server()
+    nServer.addresses = settingsServer.addresses
+    nServer.cName = settingsServer.cName
+
+    nServer.cAddress = nServer.addresses[0]
+    #Add the nick and the alternative nicks...
+    for nick in self.settings.nicks:
+        nServer.nicks.append(nick)
+    nServer.cNick = self.settings.nicks[0]
+    nServer.cRealname = self.settings.realname
+    nServer.cUsername = self.settings.username
+    nServer.listTreeStore = self.listTreeStore
+
+    IRC.otherStuff = IRC.other(self.settings, self.theme)
+
+    nServer.listTreeView = self.TreeView1
+    nServer.UserListTreeView = self.UserTreeView
+    nServer.chatTextView = self.chatTextView
+    nServer.w = self.w
+
+    servers.append(nServer)
+
+    connect_events(self, nServer, IRC)
+
+    #Start a new a connection to a server(Multi threaded), self.nServer contains all the info needed, address etc.
+    import thread
+    thread.start_new(lambda x: nServer.connect(), (None,))
+
+def connect_events(self, server, IRC):
+    IRC.connectEvent("onMotdMsg", IRCEvents.onMotdMsg, server)
+    IRC.connectEvent("onServerMsg", IRCEvents.onServerMsg, server)
+    IRC.connectEvent("onPrivMsg", IRCEvents.onPrivMsg, server)
+    IRC.connectEvent("onJoinMsg", IRCEvents.onJoinMsg, server)
+    IRC.connectEvent("onQuitMsg", IRCEvents.onQuitMsg, server)
+    IRC.connectEvent("onPartMsg", IRCEvents.onPartMsg, server)
+    IRC.connectEvent("onNoticeMsg", IRCEvents.onNoticeMsg, server)
+    IRC.connectEvent("onKickMsg", IRCEvents.onKickMsg, server)
+    IRC.connectEvent("onNickChange", IRCEvents.onNickChange, server)
+    IRC.connectEvent("onModeChange", IRCEvents.onModeChange, server)
+    IRC.connectEvent("onUsersChange", IRCEvents.onUsersChange, server)
+    IRC.connectEvent("onUserJoin", IRCEvents.onUserJoin, server)
+    IRC.connectEvent("onUserRemove", IRCEvents.onUserRemove, server)
+    IRC.connectEvent("onUserOrderUpdate", IRCEvents.onUserOrderUpdate, server)
+    IRC.connectEvent("onLagChange", self.onLagChange, server)     
+    IRC.connectEvent("onByteSendChange", self.onByteSendChange, server)
+    IRC.connectEvent("onOwnPrivMsg", self.onOwnPrivMsg, server)
+    IRC.connectEvent("onTopicChange", self.onTopicChange, server); IRC.connectEvent("onTopicChange", IRCEvents.onTopicChange, server)
+    IRC.connectEvent("onChannelModeChange", IRCEvents.onChannelModeChange, server)
+    IRC.connectEvent("onServerDisconnect", IRCEvents.onServerDisconnect, server)
+    IRC.connectEvent("onKillMsg", IRCEvents.onKillMsg, server)
+    
+    
+    
+    
+    
+    
+    
+    

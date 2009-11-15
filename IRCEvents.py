@@ -66,21 +66,7 @@ def onServerMsg(cResp, cServer, otherStuff):#When a server msg is received and p
                 format_insert_text(destTxtBuff.cTextBuffer, destTxtBuff.cTextBuffer.get_end_iter(),"21 >28!21< ")
                 format_insert_text(destTxtBuff.cTextBuffer, destTxtBuff.cTextBuffer.get_end_iter(), m.msg + "\n")
 
-    """---------------------"""
-    #This is if the serverMsg is for a server
-    try:
-        change=True
-        try:
-            if type(destTxtBuff.cAddress.cAddress) ==  str:
-                change=True
-        except:
-            change=False
 
-        if change==True:
-            destTxtBuff.cName=destTxtBuff.cAddress.cAddress
-    except:
-        pDebug("\033[1;40m\033[1;33mMaking destTxtBuff.cName=destTxtBuff.cAddress.cAddress failed.\033[1;m\033[1;m")
-    """----------------------"""
     scrollTxtViewColorTItem(destTxtBuff, cServer, otherStuff.settings.statusTColor)
 
 
@@ -1025,7 +1011,7 @@ def scrollTxtViewColorTItem(ch, cServer, color):
         elif color != None and newlySelected != ch.cName:
             cServer.listTreeStore.set_value(ch.cTreeIter, 2, color) #Set the channels this message was sent to, TreeIter color.
     elif ch.cType == "server":
-        if newlySelected == ch.cAddress.cAddress:#TODO: It should be ch.cName(server.cName), the mainForm uses cAddress though...CHANGE!
+        if newlySelected.lower() == ch.cName.lower():
             #Scroll the TextView to the bottom...                                   
             endMark = ch.cTextBuffer.create_mark(None, ch.cTextBuffer.get_end_iter(), True)
             cServer.chatTextView.scroll_to_mark(endMark, 0)
