@@ -30,14 +30,14 @@
       <address port="6669" ssl="false">dom96.dynalias.com</address>
       <address port="6669" ssl="false" pass="awesomeness">programble.dynalias.com</address>
     </server>
-    <server name="ArcherSeven" autoconnect="false">
+    <server name="ArcherSeven" autoconnect="true">
       <address port="6669" ssl="false">irc.archerseven.com</address>
       <address port="6667" ssl="false">ikey.dynalias.com</address>
     </server>
     <server name="SpotChat" autoconnect="false">
       <address port="6667" ssl="false">irc.spotchat.org</address>
     </server>
-    <server name="Freenode" autoconnect="true">
+    <server name="Freenode" autoconnect="false">
       <address port="9002" ssl="false">testnet.freenode.net</address>
     </server>
     <server name="EFNet" autoconnect="false">
