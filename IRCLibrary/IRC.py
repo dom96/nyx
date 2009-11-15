@@ -268,7 +268,7 @@ class server():
         #Add one to connectRetries
         self.connectRetries += 1
         #Try connecting again
-        self.connect(s)
+        self.connect()
         return 
 
     def ping_server(self):

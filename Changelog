@@ -5,6 +5,7 @@ I know this isn't correct ChangeLog format...
     * The server TreeIter now gets added in the connect function(IRC.py)
     * Added multi-server support! /newserver address port
     * Fixed a message buffer bug, where you can't send messages AT ALL when there is no channels joined...
+    * Fixed a bug with cycle_address
 
 2009-11-13  Dominik Picheta  <dominikpicheta@googlemail.com>
 

@@ -38,6 +38,7 @@
       <address port="6667" ssl="false">irc.spotchat.org</address>
     </server>
     <server name="Freenode" autoconnect="true">
+      <address port="6656" ssl="false">irc.freenode.net</address>
       <address port="8001" ssl="false">irc.freenode.net</address>
     </server>
     <server name="Freenode" autoconnect="false">
