@@ -154,7 +154,6 @@ class MainForm:
                     
                     #Set the Userlist TreeView's 'model'
                     self.UserTreeView.set_model(i.UserListStore)
-                    self.UserTreeView.show()
                     
                     pDebug("NewTextBuffer Channel = " + i.cName)
                     #Set the topic
@@ -168,8 +167,8 @@ class MainForm:
                     self.listTreeStore.set_value(i.cTreeIter, 2, normalChannelColor)
                     #Set the TextViews buffer
                     self.chatTextView.set_buffer(i.cTextBuffer)
-                    #Hide the Userlist TreeView
-                    self.UserTreeView.hide()
+                    #Change the UserTreeView's Model to none, Windows had problems with .hide()
+                    self.UserTreeView.set_model(None)
                     
                     pDebug("NewTextBuffer User = " + i.cName)
                     #Set the topic to the ident of the user
@@ -186,8 +185,8 @@ class MainForm:
             
             pDebug("NewTextBuffer Server = " + i.cAddress.cAddress)
             
-            #Hide the Userlist TreeView
-            self.UserTreeView.hide()
+            #Change the UserTreeView's Model to none, Windows had problems with .hide()
+            self.UserTreeView.set_model(None)
             #Set the topic EntryBox's text to the address of this server
             self.TopicEntryBox.set_text(i.cAddress.cAddress)
             self.pingLabel.set_text(str(int(round(serv.lag))) + " ms")

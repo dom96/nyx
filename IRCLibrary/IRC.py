@@ -104,7 +104,8 @@ class server():
             self.cSocket.connect((self.cAddress.cAddress, self.cAddress.cPort)) #Connect to the server
             self.connected=True
         except Exception as err:
-            pDebug("\033[1;31m" + str(err) + "\033[1;m")
+            pDebug("\033[1;31m" + str(err) + " on server " + self.cAddress.cAddress + "\033[1;m")
+            #TODO: make it create the TreeIter even when it's not connected and print connect errors...
             #If you can't connect to the server, due to a timeout or something else..
             #Cycle to the next address
             self.cycle_address()

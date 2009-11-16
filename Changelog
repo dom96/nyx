@@ -1,4 +1,8 @@
 I know this isn't correct ChangeLog format...
+2009-11-16  Dominik Picheta  <dominikpicheta@googlemail.com>
+
+    * Fixed a UserTreeView.hide() bug in Windows(Weird..)
+
 2009-11-15  Dominik Picheta  <dominikpicheta@googlemail.com>
 
     * Nyx now checks the 4 value of a TreeIter to determine if it's a channel a server or a user
