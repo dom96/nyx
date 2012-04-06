@@ -24,12 +24,12 @@
     <color name="status" red="0" green="200" blue="255" />
   </treeviewColors>
   <servers>
-    <server name="MDSNet" autoconnect="true">
-      <!--<address port="6667" ssl="false">localhost</address>-->
+    <!--<server name="MDSNet" autoconnect="true">
+      <address port="6667" ssl="false">localhost</address>
       
       <address port="6669" ssl="false">dom96.dynalias.com</address>
       <address port="6669" ssl="false" pass="awesomeness">programble.dynalias.com</address>
-    </server>
+    </server>-->
     <server name="ArcherSeven" autoconnect="false">
       <address port="6669" ssl="false">irc.archerseven.com</address>
       <address port="6667" ssl="false">ikey.dynalias.com</address>
